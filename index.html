@@ -1486,41 +1486,52 @@ function goto(id, pushHistory) {
 }
 
 // Geri tuşu desteği
+// İlk state'i ayarla — tarayıcı geri tuşunda sayfadan çıkmasın
+history.replaceState({ screen: 'home' }, '', '');
+
 window.addEventListener('popstate', function(e) {
   // Grading ekranı açıksa kapat
   const gs = document.getElementById('gradingScreen');
   if (gs && gs.classList.contains('open')) {
     gs.classList.remove('open');
-    history.pushState({ screen: 'teacher' }, '', '');
     return;
   }
   // Grade modal açıksa kapat
   const gm = document.getElementById('gradeModal');
   if (gm && gm.style.display !== 'none' && gm.querySelector('.gm-modal')) {
     closeGradeModal();
-    history.pushState({ screen: 'teacher' }, '', '');
     return;
   }
   // Admin panel açıksa kapat
   const ap = document.getElementById('adminPanelModal');
   if (ap && ap.classList.contains('open')) {
     closeAdminPanel();
-    history.pushState({ screen: 'teacher' }, '', '');
+    return;
+  }
+  // Sidebar açıksa kapat
+  const sb = document.querySelector('.sidebar.open');
+  if (sb) {
+    closeSidebar();
     return;
   }
   // Öğretmen auth modal açıksa kapat
   const tm = document.getElementById('teacherModal');
   if (tm && tm.classList.contains('open')) {
     closeTeacherAuth();
-    history.pushState({ screen: 'home' }, '', '');
     return;
   }
   // Ekran geçişleri
   if (e.state && e.state.screen) {
     goto(e.state.screen, false);
   } else {
-    // En son home'a dön
-    goto('home', false);
+    // Home ekranındayız, sayfadan çıkma — state'i geri koy
+    const activeScreen = document.querySelector('.screen.active');
+    const currentId = activeScreen ? activeScreen.id : 'home';
+    if (currentId !== 'home') {
+      goto('home', false);
+    }
+    // Home'dayken geri basılırsa bir şey yapma, state'i koru
+    history.pushState({ screen: 'home' }, '', '');
   }
 });
 
