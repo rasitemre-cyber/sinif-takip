@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sınıf Takip">
+<meta name="theme-color" content="#0a0a0f">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>Sınıf Takip Sistemi</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -393,6 +399,13 @@ input[type=range]::-webkit-slider-thumb:active{transform:scale(1.2);cursor:grabb
 .gm-avg strong{color:var(--text);font-family:'Syne',sans-serif}
 
 </style>
+
+<!-- PWA Service Worker -->
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
 
 <!-- SUPABASE -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
