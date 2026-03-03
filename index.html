@@ -836,8 +836,8 @@ async function renderAdminTeachers() {
       actions += `<button class="appr-approve" onclick="adminApproveT('${t.id}')">Onayla</button>`;
     }
     if (!isMe) {
-      actions += `<button class="appr-reject" onclick="adminResetPw('${t.id}','${t.full_name.replace(/'/g,"\\'")}')" style="font-size:10px">Şifre Sıfırla</button>`;
-      actions += `<button class="appr-reject" onclick="adminDeleteT('${t.id}','${t.full_name.replace(/'/g,"\\'")}')" style="font-size:10px;border-color:#ff4757;color:#ff4757">Sil</button>`;
+      actions += `<button class="appr-reject" onclick="adminResetPw(this)" data-id="${t.id}" data-name="${t.full_name}" style="font-size:10px">Şifre Sıfırla</button>`;
+      actions += `<button class="appr-reject" onclick="adminDeleteT(this)" data-id="${t.id}" data-name="${t.full_name}" style="font-size:10px;border-color:#ff4757;color:#ff4757">Sil</button>`;
     }
 
     return `<div class="appr-card">
@@ -855,16 +855,19 @@ async function adminApproveT(id) { await sb.from('teachers').update({status:'app
 async function adminRejectT(id) { await sb.from('teachers').update({status:'rejected'}).eq('id',id); renderAdminTeachers(); }
 async function adminMakeAdmin(id) { await sb.from('teachers').update({is_admin:true}).eq('id',id); renderAdminTeachers(); }
 async function adminRemoveAdmin(id) { await sb.from('teachers').update({is_admin:false}).eq('id',id); renderAdminTeachers(); }
-async function adminDeleteT(id, name) {
-  if (!confirm(`"${name}" kalıcı olarak silinsin mi?`)) return;
-  const rows = JSON.parse(localStorage.getItem('mock_teachers') || '[]').filter(r => r.id !== id);
-  localStorage.setItem('mock_teachers', JSON.stringify(rows));
+async function adminDeleteT(btn) {
+  const id = btn.dataset.id;
+  const name = btn.dataset.name;
+  if (!confirm(name + ' kalici olarak silinsin mi?')) return;
+  await sb.from('teachers').delete().eq('id', id);
   renderAdminTeachers();
 }
-async function adminResetPw(id, name) {
-  const newPw = prompt(`"${name}" için yeni şifre:`);
+async function adminResetPw(btn) {
+  const id = btn.dataset.id;
+  const name = btn.dataset.name;
+  const newPw = prompt(name + ' icin yeni sifre:');
   if (!newPw) return;
-  await sb.from('teachers').update({pass_hash: btoa(newPw)}).eq('id',id);
+  await sb.from('teachers').update({pass_hash: btoa(newPw)}).eq('id', id);
   renderAdminTeachers();
 }
 
@@ -944,18 +947,30 @@ async function teacherRegister() {
   let isFirst = false;
   try {
     const result = await sb.from('teachers').select('id').eq('kurum_kodu', kurumKodu).order('created_at');
+    console.log('Kurum kontrol:', result.data);
     isFirst = !result.data || result.data.length === 0;
-  } catch(e) { isFirst = true; }
+  } catch(e) { console.log('Kurum kontrol hata:', e); isFirst = true; }
 
-  const { error } = await sb.from('teachers').insert({
+  console.log('isFirst:', isFirst);
+
+  const insertData = {
     full_name: name, branch, kurum_kodu: kurumKodu, school_name: schoolName,
-    pass_hash: btoa(pass), status: isFirst ? 'approved' : 'pending',
-    is_admin: isFirst
-  });
+    pass_hash: btoa(pass), status: isFirst ? 'approved' : 'pending'
+  };
+  if (isFirst) insertData.is_admin = true;
+  
+  const { error } = await sb.from('teachers').insert(insertData);
   if (error) return tMsg('Hata: ' + error.message, 'err');
 
+  // is_admin ayrı update (Supabase insert hatası olursa)
   if (isFirst) {
-    // İlk öğretmen: bilgi modalı göster
+    try {
+      const { data: newT } = await sb.from('teachers').select('id').eq('full_name', name).eq('kurum_kodu', kurumKodu).single();
+      if (newT) await sb.from('teachers').update({ is_admin: true }).eq('id', newT.id);
+    } catch(e) { console.log('Admin update hata:', e); }
+  }
+
+  if (isFirst) {
     closeTeacherAuth();
     showAdminWelcome(name, schoolName, kurumKodu, pass);
   } else {
@@ -1034,10 +1049,10 @@ function teacherLogout() {
   goto('home');
 }
 
-// ── TEACHER-SPECIFIC PDF STORAGE ──────────────────────────────
+// __ KURUM BAZLI PDF STORAGE (ayni okuldaki tum ogretmenler paylasir)
 function getTeacherPdfKey() {
   if (!currentTeacher) return null;
-  return 'teacherPdf_' + currentTeacher.id;
+  return 'kurumPdf_' + currentTeacher.kurumKodu;
 }
 
 function saveTeacherPdf() {
