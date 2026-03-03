@@ -826,8 +826,15 @@ if (!localStorage.getItem('_reset_v8')) {
         onclick="closeAdminPanel()">✕ Kapat</button>
     </div>
     <div class="modal-sub" id="adminSubTitle">Okuldaki öğretmenleri yönetin.</div>
+    <div style="display:flex;gap:4px;margin:8px 0">
+      <button class="tab active" id="admTabT" onclick="switchAdminTab('teachers')" style="padding:6px 14px;font-size:12px">👩‍🏫 Öğretmenler</button>
+      <button class="tab" id="admTabS" onclick="switchAdminTab('students')" style="padding:6px 14px;font-size:12px">🎒 Öğrenciler</button>
+      <button class="tab" id="admTabR" onclick="switchAdminTab('requests')" style="padding:6px 14px;font-size:12px">📩 Başvurular</button>
+    </div>
     <div class="modal-sep"></div>
     <div id="adminTeacherList" style="max-height:450px;overflow-y:auto"></div>
+    <div id="adminStudentList" style="max-height:450px;overflow-y:auto;display:none"></div>
+    <div id="adminRequestList" style="max-height:450px;overflow-y:auto;display:none"></div>
   </div>
 </div>
 
@@ -879,6 +886,105 @@ async function openAdminPanel() {
 
 function closeAdminPanel() {
   document.getElementById('adminPanelModal').classList.remove('open');
+}
+
+function switchAdminTab(tab) {
+  document.getElementById('adminTeacherList').style.display = tab === 'teachers' ? '' : 'none';
+  document.getElementById('adminStudentList').style.display = tab === 'students' ? '' : 'none';
+  document.getElementById('adminRequestList').style.display = tab === 'requests' ? '' : 'none';
+  document.getElementById('admTabT').className = 'tab' + (tab === 'teachers' ? ' active' : '');
+  document.getElementById('admTabS').className = 'tab' + (tab === 'students' ? ' active' : '');
+  document.getElementById('admTabR').className = 'tab' + (tab === 'requests' ? ' active' : '');
+  if (tab === 'students') renderAdminStudents();
+  if (tab === 'requests') renderAdminRequests();
+}
+
+function renderAdminStudents() {
+  const el = document.getElementById('adminStudentList');
+  const tKurum = currentTeacher?.kurumKodu || '';
+  const students = ST.requests.filter(r => r.kurumKodu === tKurum && r.studentIdx !== undefined && r.studentIdx !== null);
+  if (students.length === 0) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px">Eşleştirilmiş öğrenci yok.</div>';
+    return;
+  }
+  el.innerHTML = students.map((r, idx) => {
+    const origIdx = ST.requests.indexOf(r);
+    const pw = r.passHash ? atob(r.passHash) : '?';
+    return `<div class="appr-card">
+      <div class="appr-info">
+        <div class="appr-name">${r.name} <span style="color:var(--muted);font-size:11px">#${r.number}</span></div>
+        <div class="appr-meta">Şifre: ${pw} · ${r.schoolName || ''}</div>
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">
+        <button class="appr-reject" onclick="adminDeleteStudent(${origIdx})" style="font-size:10px;border-color:#ff4757;color:#ff4757">Sil</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function adminDeleteStudent(idx) {
+  const r = ST.requests[idx];
+  if (!r) return;
+  if (!confirm(r.name + ' silinsin mi?')) return;
+  ST.requests.splice(idx, 1);
+  saveST();
+  renderAdminStudents();
+}
+
+function renderAdminRequests() {
+  const el = document.getElementById('adminRequestList');
+  const tKurum = currentTeacher?.kurumKodu || '';
+  const pending = ST.requests.filter(r => r.kurumKodu === tKurum && (r.studentIdx === undefined || r.studentIdx === null));
+  if (pending.length === 0) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px">Bekleyen başvuru yok.</div>';
+    return;
+  }
+  el.innerHTML = pending.map(r => {
+    const origIdx = ST.requests.indexOf(r);
+    // Otomatik eşleşme bul (isim ve numara)
+    let autoMatch = null;
+    for (const [k, cls] of Object.entries(ST.classes)) {
+      const si = cls.students.findIndex(s =>
+        normName(s.name) === normName(r.name) && String(s.number) === String(r.number)
+      );
+      if (si >= 0) { autoMatch = { classKey: k, studentIdx: si, className: cls.name, studentName: cls.students[si].name }; break; }
+    }
+    let matchHtml = '';
+    if (autoMatch) {
+      matchHtml = `<div style="font-size:11px;color:var(--acc3);margin-top:4px">✓ Eşleşme bulundu: ${autoMatch.className} - ${autoMatch.studentName}</div>
+        <div style="display:flex;gap:4px;margin-top:6px">
+          <button class="appr-approve" onclick="adminApproveReq(${origIdx},'${autoMatch.classKey}',${autoMatch.studentIdx})">Onayla</button>
+          <button class="appr-reject" onclick="adminRejectReq(${origIdx})">Reddet</button>
+        </div>`;
+    } else {
+      matchHtml = `<div style="font-size:11px;color:#ff6584;margin-top:4px">✗ Otomatik eşleşme bulunamadı</div>
+        <div style="display:flex;gap:4px;margin-top:6px">
+          <button class="appr-reject" onclick="adminRejectReq(${origIdx})">Reddet</button>
+        </div>`;
+    }
+    return `<div class="appr-card">
+      <div class="appr-info">
+        <div class="appr-name">${r.name} <span style="color:var(--muted);font-size:11px">#${r.number}</span></div>
+        <div class="appr-meta">${r.schoolName || ''} · ${new Date(r.ts).toLocaleString('tr-TR')}</div>
+      </div>
+      ${matchHtml}
+    </div>`;
+  }).join('');
+}
+
+function adminApproveReq(idx, classKey, studentIdx) {
+  ST.requests[idx].classKey = classKey;
+  ST.requests[idx].studentIdx = studentIdx;
+  saveST();
+  renderAdminRequests();
+  showToast('Öğrenci eşleştirildi.');
+}
+
+function adminRejectReq(idx) {
+  if (!confirm('Bu başvuru reddedilsin mi?')) return;
+  ST.requests.splice(idx, 1);
+  saveST();
+  renderAdminRequests();
 }
 
 async function renderAdminTeachers() {
@@ -1704,61 +1810,35 @@ function switchTeacherTab(tab) {
 function renderRequests() {
   const el = document.getElementById('reqList');
   const tKurum = currentTeacher?.kurumKodu || '';
-  
-  // Sadece aynı kurum kodundaki istekleri göster
-  const filtered = ST.requests.map((r, i) => ({...r, _idx: i})).filter(r => r.kurumKodu === tKurum);
+  const filtered = ST.requests.filter(r => r.kurumKodu === tKurum);
   
   if (filtered.length === 0) {
     el.innerHTML = '<div class="no-data"><div class="no-data-icon">📭</div><p>Henüz giriş isteği yok.</p></div>';
     return;
   }
 
-  // Build student options across all classes
-  let opts = '<option value="">-- Öğrenci Seç --</option>';
-  Object.entries(ST.classes).forEach(([k, cls]) => {
-    opts += `<optgroup label="${cls.name}">`;
-    cls.students.forEach((s, i) => {
-      opts += `<option value="${k}:${i}">${s.name} (#${s.number})</option>`;
-    });
-    opts += '</optgroup>';
-  });
+  const matched = filtered.filter(r => r.studentIdx !== undefined && r.studentIdx !== null);
+  const pending = filtered.filter(r => r.studentIdx === undefined || r.studentIdx === null);
 
-  el.innerHTML = filtered.map(req => {
-    const ri = req._idx;
-    if (req.classKey !== undefined && req.studentIdx !== undefined && req.studentIdx !== null) {
-      const s = ST.classes[req.classKey]?.students[req.studentIdx];
+  el.innerHTML = (pending.length > 0 ? `<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Bekleyen (${pending.length})</div>` +
+    pending.map(r => `<div class="req-card">
+      <div class="req-info">
+        <div class="req-name">${r.name} <span style="color:var(--muted);font-weight:400;font-size:12px">#${r.number}</span></div>
+        <div class="req-num">${r.schoolName || ''} · ${new Date(r.ts).toLocaleString('tr-TR')}</div>
+      </div>
+      <span style="font-size:11px;color:#ff6584">⏳ Yönetici onayı bekleniyor</span>
+    </div>`).join('') : '') +
+    (matched.length > 0 ? `<div style="font-size:11px;font-weight:700;color:var(--muted);margin:12px 0 8px;text-transform:uppercase;letter-spacing:1px">Onaylanmış (${matched.length})</div>` +
+    matched.map(r => {
+      const s = ST.classes[r.classKey]?.students[r.studentIdx];
       return `<div class="req-card">
         <div class="req-info">
-          <div class="req-name">${req.name} <span style="color:var(--muted);font-weight:400;font-size:12px">#${req.number}</span></div>
-          <div class="req-num">${req.schoolName || ''} · ${new Date(req.ts).toLocaleString('tr-TR')}</div>
+          <div class="req-name">${r.name} <span style="color:var(--muted);font-weight:400;font-size:12px">#${r.number}</span></div>
+          <div class="req-num">${r.schoolName || ''}</div>
         </div>
         <span class="matched-tag">✓ ${s ? s.name : '?'} ile eşleştirildi</span>
       </div>`;
-    }
-    return `<div class="req-card">
-      <div class="req-info">
-        <div class="req-name">${req.name}</div>
-        <div class="req-num">No: ${req.number} · ${req.schoolName || ''} · ${new Date(req.ts).toLocaleString('tr-TR')}</div>
-      </div>
-      <select class="sel" id="mSel_${ri}">${opts}</select>
-      <button class="match-btn" onclick="matchReq(${ri})">Eşleştir</button>
-    </div>`;
-  }).join('');
-}
-
-function matchReq(ri) {
-  const sel = document.getElementById('mSel_' + ri);
-  if (!sel.value) return alert('Lütfen bir öğrenci seçin.');
-  // Kurum kodu kontrolü
-  const req = ST.requests[ri];
-  const tKurum = currentTeacher?.kurumKodu || '';
-  if (req.kurumKodu !== tKurum) return alert('Bu öğrencinin kurum kodu sizinkiyle eşleşmiyor. Eşleştirme yapılamaz.');
-  const [classKey, studentIdx] = sel.value.split(':');
-  ST.requests[ri].classKey = classKey;
-  ST.requests[ri].studentIdx = parseInt(studentIdx);
-  saveST();
-  renderRequests();
-  renderTeacher();
+    }).join('') : '');
 }
 
 // ═══════════════════════════════════════════════════════════════
