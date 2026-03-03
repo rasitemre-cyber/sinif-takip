@@ -881,7 +881,7 @@ async function openAdminPanel() {
     `${currentTeacher.schoolName || 'Okul'} · Kurum: ${currentTeacher.kurumKodu}`;
   await renderAdminTeachers();
   document.getElementById('adminPanelModal').classList.add('open');
-  history.pushState({ screen: 'admin' }, '', '');
+  navPush();
 }
 
 function closeAdminPanel() {
@@ -1482,57 +1482,69 @@ function goto(id, pushHistory) {
   document.getElementById(id).classList.add('active');
   if (id === 'teacher') { if (!currentTeacher) { goto('home', false); return; } autoLoadPreloaded(); updateLastPdfBtn(); renderTeacher(); }
   if (id === 'student') renderStudentPage();
-  if (pushHistory !== false) history.pushState({ screen: id }, '', '');
+  if (pushHistory !== false) navPush();
 }
 
-// Geri tuşu desteği
-// İlk state'i ayarla — tarayıcı geri tuşunda sayfadan çıkmasın
-history.replaceState({ screen: 'home' }, '', '');
+// ── GERİ TUŞU SİSTEMİ ──
+// Her zaman history stack'te en az 2 entry olsun ki geri basınca sayfadan çıkmasın
+function navPush() {
+  history.pushState({ app: true }, '', '');
+}
+
+// Başlangıçta 2 entry koy
+history.replaceState({ app: true }, '', '');
+navPush();
+
+// Hangi katmandayız tespit et
+function getCurrentLayer() {
+  const gs = document.getElementById('gradingScreen');
+  if (gs && gs.classList.contains('open')) return 'grading';
+  const gm = document.getElementById('gradeModal');
+  if (gm && gm.querySelector('.gm-modal') && gm.style.display !== 'none') return 'gradeModal';
+  const ap = document.getElementById('adminPanelModal');
+  if (ap && ap.classList.contains('open')) return 'admin';
+  const sb = document.querySelector('.sidebar.open');
+  if (sb) return 'sidebar';
+  const tm = document.getElementById('teacherModal');
+  if (tm && tm.classList.contains('open')) return 'teacherAuth';
+  const activeScreen = document.querySelector('.screen.active');
+  if (activeScreen) return activeScreen.id;
+  return 'home';
+}
 
 window.addEventListener('popstate', function(e) {
-  // Grading ekranı açıksa kapat
-  const gs = document.getElementById('gradingScreen');
-  if (gs && gs.classList.contains('open')) {
-    gs.classList.remove('open');
-    return;
-  }
-  // Grade modal açıksa kapat
-  const gm = document.getElementById('gradeModal');
-  if (gm && gm.style.display !== 'none' && gm.querySelector('.gm-modal')) {
-    closeGradeModal();
-    return;
-  }
-  // Admin panel açıksa kapat
-  const ap = document.getElementById('adminPanelModal');
-  if (ap && ap.classList.contains('open')) {
-    closeAdminPanel();
-    return;
-  }
-  // Sidebar açıksa kapat
-  const sb = document.querySelector('.sidebar.open');
-  if (sb) {
-    closeSidebar();
-    return;
-  }
-  // Öğretmen auth modal açıksa kapat
-  const tm = document.getElementById('teacherModal');
-  if (tm && tm.classList.contains('open')) {
-    closeTeacherAuth();
-    return;
-  }
-  // Ekran geçişleri
-  if (e.state && e.state.screen) {
-    goto(e.state.screen, false);
-  } else {
-    // Home ekranındayız, sayfadan çıkma — state'i geri koy
-    const activeScreen = document.querySelector('.screen.active');
-    const currentId = activeScreen ? activeScreen.id : 'home';
-    if (currentId !== 'home') {
+  const layer = getCurrentLayer();
+  
+  switch(layer) {
+    case 'grading':
+      document.getElementById('gradingScreen').classList.remove('open');
+      break;
+    case 'gradeModal':
+      closeGradeModal();
+      break;
+    case 'admin':
+      closeAdminPanel();
+      break;
+    case 'sidebar':
+      closeSidebar();
+      break;
+    case 'teacherAuth':
+      closeTeacherAuth();
+      break;
+    case 'teacher':
+      // Öğretmen ekranından home'a dön ama oturumu kapat
       goto('home', false);
-    }
-    // Home'dayken geri basılırsa bir şey yapma, state'i koru
-    history.pushState({ screen: 'home' }, '', '');
+      break;
+    case 'student':
+      goto('home', false);
+      break;
+    default:
+      // Home'dayız, bir şey yapma
+      break;
   }
+  
+  // Her zaman stack'te entry olsun
+  navPush();
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -1898,7 +1910,7 @@ function startGrading() {
   document.getElementById('gTot').textContent = ST.classes[ST.activeClass].students.length;
   document.getElementById('gradingScreen').classList.add('open');
   document.getElementById('gNext').style.display = '';
-  history.pushState({ screen: 'grading' }, '', '');
+  navPush();
   showGrading();
 }
 
@@ -2011,7 +2023,7 @@ function openGradeModal(classKey, studentIdx) {
   gmClassKey = classKey;
   gmStudentIdx = studentIdx;
   gmEditingIdx = null;
-  history.pushState({ screen: 'gradeModal' }, '', '');
+  navPush();
   const cls = ST.classes[classKey];
   const s = cls.students[studentIdx];
 
