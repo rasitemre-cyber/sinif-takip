@@ -303,7 +303,7 @@ input[type=range]::-webkit-slider-thumb:active{transform:scale(1.2);cursor:grabb
 
 @media(max-width:640px){
   .sidebar{display:none}
-  .mobile-class-bar{display:flex !important}
+  .mobile-class-bar{display:flex}
   .stat-row{grid-template-columns:repeat(2,1fr)}
   .perf-row{flex-direction:column}
   .g-photo{width:150px;height:190px}
@@ -511,6 +511,15 @@ if (IS_PREVIEW) {
 
 </head>
 <body>
+<script>
+// Tek seferlik reset - sonra bu satırı silebilirsiniz
+if (!localStorage.getItem('_reset_v7')) {
+  localStorage.clear();
+  sessionStorage.clear();
+  localStorage.setItem('_reset_v7', '1');
+  location.reload();
+}
+</script>
 
 <!-- HOME -->
 <div id="home" class="screen active">
@@ -948,6 +957,11 @@ function renderTeacherModal(mode) {
   }
 }
 
+// İsim normalizasyonu: her kelimenin ilk harfi büyük, geri kalan küçük
+function normName(s) {
+  return s.toLowerCase().replace(/(?:^|\s)\S/g, c => c.toUpperCase());
+}
+
 function tMsg(text, type) {
   const el = document.getElementById('tMsg');
   if (!el) return;
@@ -955,15 +969,16 @@ function tMsg(text, type) {
 }
 
 async function teacherRegister() {
-  const name = document.getElementById('tRegName').value.trim();
+  const rawName = document.getElementById('tRegName').value.trim();
   const branch = document.getElementById('tRegBranch').value.trim();
   const kurumKodu = document.getElementById('tRegKurum').value.trim();
   const schoolName = document.getElementById('tRegSchool').value.trim();
   const pass = document.getElementById('tRegPass').value;
   const pass2 = document.getElementById('tRegPass2').value;
-  if (!name || !branch || !kurumKodu || !schoolName || !pass) return tMsg('Tüm alanlar zorunludur.', 'err');
+  if (!rawName || !branch || !kurumKodu || !schoolName || !pass) return tMsg('Tüm alanlar zorunludur.', 'err');
   if (pass.length < 4) return tMsg('Şifre en az 4 karakter olmalı.', 'err');
   if (pass !== pass2) return tMsg('Şifreler eşleşmiyor.', 'err');
+  const name = normName(rawName);
 
   const { data: exists } = await sb.from('teachers').select('id').eq('full_name', name).eq('kurum_kodu', kurumKodu).single();
   if (exists) return tMsg('Bu isim ve kurum koduyla zaten bir kayıt var.', 'err');
@@ -1033,10 +1048,11 @@ function showAdminWelcome(name, schoolName, kurumKodu, pass) {
 }
 
 async function teacherLogin() {
-  const name = document.getElementById('tLoginName').value.trim();
+  const rawName = document.getElementById('tLoginName').value.trim();
   const kurumKodu = document.getElementById('tLoginKurum').value.trim();
   const pass = document.getElementById('tLoginPass').value;
-  if (!name || !kurumKodu || !pass) return tMsg('Tüm alanlar zorunlu.', 'err');
+  if (!rawName || !kurumKodu || !pass) return tMsg('Tüm alanlar zorunlu.', 'err');
+  const name = normName(rawName);
 
   const { data: teacher } = await sb.from('teachers').select('*').eq('full_name', name).eq('kurum_kodu', kurumKodu).single();
   if (!teacher) return tMsg('Kayıtlı öğretmen bulunamadı.', 'err');
@@ -1558,7 +1574,9 @@ function renderTeacher() {
   if (mcb) {
     if (keys.length === 0) {
       mcb.innerHTML = '';
+      mcb.style.display = 'none';
     } else {
+      mcb.style.display = '';
       mcb.innerHTML = keys.map(k => {
         const cls = ST.classes[k];
         return `<div class="mcb-item ${ST.activeClass === k ? 'active' : ''}" onclick="selectClass('${k}')">${cls.name}</div>`;
