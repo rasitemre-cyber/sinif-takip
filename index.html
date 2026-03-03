@@ -302,7 +302,12 @@ input[type=range]::-webkit-slider-thumb:active{transform:scale(1.2);cursor:grabb
 .tn-date{font-size:10px;color:var(--muted);margin-top:4px}
 
 @media(max-width:640px){
-  .sidebar{display:none}
+  .sidebar{display:flex;position:fixed;left:-280px;top:0;bottom:0;width:270px;z-index:200;
+    transition:left .3s ease;box-shadow:none}
+  .sidebar.open{left:0;box-shadow:4px 0 20px rgba(0,0,0,.5)}
+  .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:199}
+  .sidebar-overlay.open{display:block}
+  .mobile-class-bar{display:flex}
   .stat-row{grid-template-columns:repeat(2,1fr)}
   .perf-row{flex-direction:column}
   .g-photo{width:120px;height:160px}
@@ -311,7 +316,6 @@ input[type=range]::-webkit-slider-thumb:active{transform:scale(1.2);cursor:grabb
   .period-btns{display:none}
   .back{padding:5px 12px;font-size:12px}
   .t-body{flex-direction:column}
-  .mobile-class-bar{display:flex}
   .tabs{padding:8px 12px 0}
   .tab{padding:6px 10px 8px;font-size:12px}
   #tabList{padding:16px !important}
@@ -326,15 +330,16 @@ input[type=range]::-webkit-slider-thumb:active{transform:scale(1.2);cursor:grabb
   .no-data{padding:40px 20px}
   .no-data-icon{font-size:36px}
   .no-data p{font-size:13px}
-  /* Grading screen mobile */
   .g-card{padding:20px}
   .g-name{font-size:18px}
   .g-slider-wrap{padding:0 10px}
   .g-next{font-size:13px;padding:12px}
-  /* Mobile topbar actions */
   .mobile-topbar-actions{display:flex !important}
+  .mobile-hamburger{display:flex !important}
 }
 .mobile-topbar-actions{display:none;gap:6px;width:100%;justify-content:space-between;align-items:center}
+.mobile-hamburger{display:none;align-items:center;justify-content:center;width:36px;height:36px;
+  border-radius:8px;border:1px solid var(--border);background:var(--surf2);cursor:pointer;font-size:18px;flex-shrink:0}
 .mobile-class-bar{display:none;gap:8px;padding:10px 14px;overflow-x:auto;
   border-bottom:1px solid var(--border);background:var(--surf);-webkit-overflow-scrolling:touch}
 .mobile-class-bar::-webkit-scrollbar{display:none}
@@ -566,8 +571,11 @@ if (!localStorage.getItem('_reset_v8')) {
 <!-- TEACHER -->
 <div id="teacher" class="screen">
   <div class="topbar">
-    <span class="topbar-title">👩‍🏫 <span id="schoolNameBadge" style="font-family:'DM Sans';font-size:13px;font-weight:400;color:var(--muted);"></span>
-    </span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="mobile-hamburger" onclick="toggleSidebar()">☰</div>
+      <span class="topbar-title">👩‍🏫 <span id="schoolNameBadge" style="font-family:'DM Sans';font-size:13px;font-weight:400;color:var(--muted);"></span>
+      </span>
+    </div>
     <div style="display:flex;gap:6px;align-items:center">
       <div class="period-btns" style="margin-right:4px">
         <button class="tab" id="tabBtnList" onclick="switchTeacherTab('list')" style="padding:6px 14px">Sınıf Listesi</button>
@@ -585,6 +593,8 @@ if (!localStorage.getItem('_reset_v8')) {
   </div>
 
   <div class="t-body">
+    <!-- Sidebar overlay (mobil) -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
     <!-- Sidebar -->
     <div class="sidebar">
       <div class="sb-teacher">
@@ -1119,7 +1129,17 @@ async function teacherLogin() {
 function teacherLogout() {
   currentTeacher = null;
   document.getElementById('btnAdmin').style.display = 'none';
+  closeSidebar();
   goto('home');
+}
+
+function toggleSidebar() {
+  document.querySelector('.sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('open');
+}
+function closeSidebar() {
+  document.querySelector('.sidebar')?.classList.remove('open');
+  document.getElementById('sidebarOverlay')?.classList.remove('open');
 }
 
 // __ KURUM BAZLI PDF STORAGE (ayni okuldaki tum ogretmenler paylasir)
@@ -1162,23 +1182,23 @@ function loadLastPdf() {
     if (!raw) { alert('Daha önce yüklenmiş PDF bulunamadı.'); return; }
     const data = JSON.parse(raw);
     
-    // Restore classes (without photos)
+    let photos = {};
+    try { photos = JSON.parse(localStorage.getItem(key + '_photos') || '{}'); } catch(e) {}
     for (const [k, cls] of Object.entries(data.classes)) {
       if (!ST.classes[k]) {
         ST.classes[k] = {
           name: cls.name,
           school: cls.school,
-          students: cls.students.map(s => ({ name: s.name, number: s.number, photoData: null }))
+          students: cls.students.map((s, si) => ({ name: s.name, number: s.number, photoData: (photos[k+'_'+si] || null) }))
         };
       }
     }
     if (data.schoolName) ST.schoolName = data.schoolName;
     
     const keys = Object.keys(ST.classes);
-    if (keys.length > 0 && !ST.activeClass) ST.activeClass = keys[0];
+    ST.activeClass = null;
     saveST();
     renderTeacher();
-    if (ST.activeClass) selectClass(ST.activeClass);
     
     const savedDate = new Date(data.savedAt).toLocaleString('tr-TR');
     showToast(`Son yükleme geri yüklendi (${savedDate})`);
@@ -1220,19 +1240,20 @@ function loadTeacherData() {
     if (!raw) return;
     const data = JSON.parse(raw);
     
+    let photos = {};
+    try { photos = JSON.parse(localStorage.getItem(key + '_photos') || '{}'); } catch(e) {}
+
     for (const [k, cls] of Object.entries(data.classes)) {
       ST.classes[k] = {
         name: cls.name,
         school: cls.school,
-        students: cls.students.map(s => ({ name: s.name, number: s.number, photoData: null }))
+        students: cls.students.map((s, si) => ({ name: s.name, number: s.number, photoData: (photos[k+'_'+si] || null) }))
       };
-      // Try to restore photos from sessionStorage
-      loadPhotos(k, ST.classes[k].students);
     }
     if (data.schoolName) ST.schoolName = data.schoolName;
     
     const keys = Object.keys(ST.classes);
-    if (keys.length > 0) ST.activeClass = keys[0];
+    ST.activeClass = null;
     saveST();
   } catch(e) { console.warn('Öğretmen verisi yükleme hatası:', e); }
 }
@@ -1407,11 +1428,10 @@ async function handlePDF(file) {
     saveTeacherPdf(); // Save per-teacher PDF data
     hideLoading();
 
-    // Auto-select first new class or first class
+    // Sinif secimini kullaniciya birak
     const keys = Object.keys(ST.classes);
-    if (keys.length > 0 && !ST.activeClass) ST.activeClass = keys[0];
+    ST.activeClass = null;
     renderTeacher();
-    if (ST.activeClass) selectClass(ST.activeClass);
 
     if (newClasses === 0) alert('PDF\'de yeni sınıf bulunamadı. Lütfen e-Okul formatında bir PDF yükleyin.');
 
@@ -1641,6 +1661,7 @@ function selectClass(key) {
   ST.activeClass = key;
   saveST();
   switchTeacherTab('list');
+  closeSidebar();
 
   const cls = ST.classes[key];
   document.getElementById('emptyState').style.display = 'none';
@@ -1756,22 +1777,30 @@ function startGrading() {
 }
 
 function showGrading() {
-  document.getElementById('gCur').textContent = gradIdx + 1;
   const students = ST.classes[ST.activeClass].students;
+  document.getElementById('gCur').textContent = Math.min(gradIdx + 1, students.length);
 
   if (gradIdx >= students.length) {
     document.getElementById('gBody').innerHTML = `
-      <div class="completed">
-        <div class="completed-icon">🎉</div>
-        <div class="completed-title">Tamamlandı!</div>
-        <div class="completed-sub">${students.length} öğrenciye not verildi.</div>
+      <div class="completed" style="padding:30px 20px">
+        <div class="completed-icon" style="font-size:40px">🎉</div>
+        <div class="completed-title" style="font-size:18px;margin-top:8px">Tamamlandı!</div>
+        <div class="completed-sub" style="font-size:13px;margin-top:4px">${students.length} öğrenciye not verildi.</div>
+        <button class="grade-btn" onclick="closeGrading()" style="margin-top:16px;font-size:13px;padding:10px 28px">← Sınıfa Dön</button>
       </div>`;
     document.getElementById('gNext').style.display = 'none';
     document.getElementById('gNote').style.display = 'none';
     document.getElementById('gNotePrev').innerHTML = '';
+    document.querySelector('.g-slider-wrap').style.display = 'none';
+    document.getElementById('gBubble').style.display = 'none';
     renderTeacher();
     return;
   }
+
+  // Slider'ı tekrar göster (önceki tamamlandıdan dönüş için)
+  document.querySelector('.g-slider-wrap').style.display = '';
+  document.getElementById('gBubble').style.display = '';
+  document.getElementById('gNext').style.display = '';
 
   document.getElementById('gSlider').value = 50;
   onSlide(50);
