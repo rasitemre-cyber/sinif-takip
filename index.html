@@ -303,18 +303,47 @@ input[type=range]::-webkit-slider-thumb:active{transform:scale(1.2);cursor:grabb
 
 @media(max-width:640px){
   .sidebar{display:none}
-  .mobile-class-bar{display:flex}
   .stat-row{grid-template-columns:repeat(2,1fr)}
   .perf-row{flex-direction:column}
-  .g-photo{width:150px;height:190px}
+  .g-photo{width:120px;height:160px}
+  .topbar{padding:10px 14px;flex-wrap:wrap;gap:6px}
+  .topbar-title{font-size:15px}
+  .period-btns{display:none}
+  .back{padding:5px 12px;font-size:12px}
+  .t-body{flex-direction:column}
+  .mobile-class-bar{display:flex}
+  .tabs{padding:8px 12px 0}
+  .tab{padding:6px 10px 8px;font-size:12px}
+  #tabList{padding:16px !important}
+  .stu-grid{grid-template-columns:repeat(3,1fr) !important;gap:10px !important}
+  .stu-card{padding:10px 6px !important}
+  .stu-name{font-size:11px !important}
+  .stu-num{font-size:9px !important}
+  .stu-photo{width:44px;height:44px;margin:0 auto 6px}
+  .stu-photo img{width:100%;height:100%;object-fit:cover}
+  .cls-header{flex-direction:column;gap:8px;align-items:flex-start}
+  .cls-header .grade-btn{width:100%;text-align:center}
+  .no-data{padding:40px 20px}
+  .no-data-icon{font-size:36px}
+  .no-data p{font-size:13px}
+  /* Grading screen mobile */
+  .g-card{padding:20px}
+  .g-name{font-size:18px}
+  .g-slider-wrap{padding:0 10px}
+  .g-next{font-size:13px;padding:12px}
+  /* Mobile topbar actions */
+  .mobile-topbar-actions{display:flex !important}
 }
-.mobile-class-bar{display:none;gap:8px;padding:10px 16px;overflow-x:auto;
+.mobile-topbar-actions{display:none;gap:6px;width:100%;justify-content:space-between;align-items:center}
+.mobile-class-bar{display:none;gap:8px;padding:10px 14px;overflow-x:auto;
   border-bottom:1px solid var(--border);background:var(--surf);-webkit-overflow-scrolling:touch}
 .mobile-class-bar::-webkit-scrollbar{display:none}
 .mcb-item{flex-shrink:0;padding:8px 16px;border-radius:20px;font-size:12px;font-family:'DM Sans',sans-serif;
   cursor:pointer;background:var(--surf2);border:1px solid var(--border);color:var(--muted);white-space:nowrap;
   transition:all .2s}
 .mcb-item.active{background:rgba(108,99,255,.2);border-color:rgba(108,99,255,.5);color:var(--acc);font-weight:500}
+.mcb-pdf{flex-shrink:0;padding:8px 14px;border-radius:20px;font-size:11px;font-family:'DM Sans',sans-serif;
+  cursor:pointer;background:rgba(108,99,255,.1);border:1px dashed rgba(108,99,255,.4);color:var(--acc);white-space:nowrap}
 
 /* ── AUTH MODALS ── */
 .modal-overlay{position:fixed;inset:0;background:rgba(10,10,15,.85);backdrop-filter:blur(8px);
@@ -432,7 +461,7 @@ if (IS_PREVIEW) {
   const saveTable = (t, d) => localStorage.setItem('mock_'+t, JSON.stringify(d));
   
   const ciEq = (a, b) => typeof a === 'string' && typeof b === 'string' 
-    ? a.toLowerCase().trim() === b.toLowerCase().trim() : a == b;
+    ? a.toLocaleLowerCase('tr-TR').trim() === b.toLocaleLowerCase('tr-TR').trim() : a == b;
   
   sb = {
     from: (table) => ({
@@ -512,11 +541,9 @@ if (IS_PREVIEW) {
 </head>
 <body>
 <script>
-// Tek seferlik reset - sonra bu satırı silebilirsiniz
-if (!localStorage.getItem('_reset_v7')) {
-  localStorage.clear();
-  sessionStorage.clear();
-  localStorage.setItem('_reset_v7', '1');
+if (!localStorage.getItem('_reset_v8')) {
+  localStorage.clear(); sessionStorage.clear();
+  localStorage.setItem('_reset_v8', '1');
   location.reload();
 }
 </script>
@@ -539,8 +566,7 @@ if (!localStorage.getItem('_reset_v7')) {
 <!-- TEACHER -->
 <div id="teacher" class="screen">
   <div class="topbar">
-    <span class="topbar-title">👩‍🏫 Öğretmen Paneli
-      <span id="schoolNameBadge" style="font-family:'DM Sans';font-size:13px;font-weight:400;color:var(--muted);"></span>
+    <span class="topbar-title">👩‍🏫 <span id="schoolNameBadge" style="font-family:'DM Sans';font-size:13px;font-weight:400;color:var(--muted);"></span>
     </span>
     <div style="display:flex;gap:6px;align-items:center">
       <div class="period-btns" style="margin-right:4px">
@@ -548,7 +574,13 @@ if (!localStorage.getItem('_reset_v7')) {
         <button class="tab" id="tabBtnReq" onclick="switchTeacherTab('req')" style="padding:6px 14px">Öğrenci İstekleri</button>
       </div>
       <button class="back" id="btnAdmin" onclick="openAdminPanel()" style="display:none;background:rgba(108,99,255,.15);border-color:var(--acc);color:var(--acc)">🛡️ Yönetici</button>
-      <button class="back" onclick="goto('home')">← Çıkış</button>
+      <button class="back" onclick="teacherLogout()">← Çıkış</button>
+    </div>
+    <!-- Mobil alt satır -->
+    <div class="mobile-topbar-actions">
+      <button class="tab" onclick="switchTeacherTab('list')" style="padding:5px 10px;font-size:11px;flex:1;text-align:center">📋 Sınıflar</button>
+      <button class="tab" onclick="switchTeacherTab('req')" style="padding:5px 10px;font-size:11px;flex:1;text-align:center" id="tabBtnReqM">📩 İstekler</button>
+      <button class="tab" onclick="document.getElementById('pdfInput').click()" style="padding:5px 10px;font-size:11px;flex:1;text-align:center">📄 PDF</button>
     </div>
   </div>
 
@@ -957,9 +989,9 @@ function renderTeacherModal(mode) {
   }
 }
 
-// İsim normalizasyonu: her kelimenin ilk harfi büyük, geri kalan küçük
+// İsim normalizasyonu: Türkçe locale ile her kelimenin ilk harfi büyük
 function normName(s) {
-  return s.toLowerCase().replace(/(?:^|\s)\S/g, c => c.toUpperCase());
+  return s.toLocaleLowerCase('tr-TR').replace(/(?:^|\s)\S/g, c => c.toLocaleUpperCase('tr-TR'));
 }
 
 function tMsg(text, type) {
@@ -1573,8 +1605,8 @@ function renderTeacher() {
   const mcb = document.getElementById('mobileClassBar');
   if (mcb) {
     if (keys.length === 0) {
-      mcb.innerHTML = '';
-      mcb.style.display = 'none';
+      mcb.innerHTML = '<div class="mcb-pdf" onclick="document.getElementById(\'pdfInput\').click()">📄 PDF Yükle</div>';
+      mcb.style.display = '';
     } else {
       mcb.style.display = '';
       mcb.innerHTML = keys.map(k => {
