@@ -303,10 +303,18 @@ input[type=range]::-webkit-slider-thumb:active{transform:scale(1.2);cursor:grabb
 
 @media(max-width:640px){
   .sidebar{display:none}
+  .mobile-class-bar{display:flex !important}
   .stat-row{grid-template-columns:repeat(2,1fr)}
   .perf-row{flex-direction:column}
   .g-photo{width:150px;height:190px}
 }
+.mobile-class-bar{display:none;gap:8px;padding:10px 16px;overflow-x:auto;
+  border-bottom:1px solid var(--border);background:var(--surf);-webkit-overflow-scrolling:touch}
+.mobile-class-bar::-webkit-scrollbar{display:none}
+.mcb-item{flex-shrink:0;padding:8px 16px;border-radius:20px;font-size:12px;font-family:'DM Sans',sans-serif;
+  cursor:pointer;background:var(--surf2);border:1px solid var(--border);color:var(--muted);white-space:nowrap;
+  transition:all .2s}
+.mcb-item.active{background:rgba(108,99,255,.2);border-color:rgba(108,99,255,.5);color:var(--acc);font-weight:500}
 
 /* ── AUTH MODALS ── */
 .modal-overlay{position:fixed;inset:0;background:rgba(10,10,15,.85);backdrop-filter:blur(8px);
@@ -561,6 +569,9 @@ if (IS_PREVIEW) {
         <input type="file" id="pdfInput" accept=".pdf" onchange="handlePDF(this.files[0])">
       </div>
     </div>
+
+    <!-- Mobile class bar (mobilde sidebar yerine) -->
+    <div class="mobile-class-bar" id="mobileClassBar"></div>
 
     <!-- Main content -->
     <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
@@ -1501,6 +1512,29 @@ function renderTeacher() {
     }).join('');
   }
 
+  // Mobil sınıf bar
+  const mcb = document.getElementById('mobileClassBar');
+  if (mcb) {
+    if (keys.length === 0) {
+      mcb.innerHTML = '';
+    } else {
+      mcb.innerHTML = keys.map(k => {
+        const cls = ST.classes[k];
+        return `<div class="mcb-item ${ST.activeClass === k ? 'active' : ''}" onclick="selectClass('${k}')">${cls.name}</div>`;
+      }).join('');
+    }
+  }
+
+  // Sınıf seçilmemişse classView gizle
+  if (!ST.activeClass) {
+    document.getElementById('classView').style.display = 'none';
+    const es = document.getElementById('emptyState');
+    if (keys.length > 0) {
+      es.style.display = 'flex';
+      es.innerHTML = '<div class="no-data-icon">📋</div><p>Bir sınıf seçin.</p>';
+    }
+  }
+
   // Request tab badge — sadece aynı kurum kodundaki istekler
   const tKurum = currentTeacher?.kurumKodu || '';
   const pending = ST.requests.filter(r => 
@@ -1522,6 +1556,18 @@ function selectClass(key) {
   document.getElementById('classView').style.display = 'block';
   document.getElementById('clsTitle').textContent = cls.name;
   document.getElementById('clsSub').textContent = `${cls.students.length} öğrenci`;
+
+  // Sidebar active güncelle
+  document.querySelectorAll('.sb-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(el => {
+    if (el.getAttribute('onclick')?.includes(key)) el.classList.add('active');
+  });
+
+  // Mobil bar active güncelle
+  document.querySelectorAll('.mcb-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.mcb-item').forEach(el => {
+    if (el.getAttribute('onclick')?.includes(key)) el.classList.add('active');
+  });
 
   document.getElementById('stuGrid').innerHTML = cls.students.map((s, i) => `
     <div class="stu-card" onclick="openGradeModal('${key}',${i})" style="cursor:pointer">
