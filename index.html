@@ -149,8 +149,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 /* ── GRADING FULLSCREEN ── */
 #gradingScreen{position:fixed;inset:0;background:var(--bg);z-index:200;
-  display:none;flex-direction:column;align-items:center;justify-content:space-between;
-  padding:28px 24px 44px}
+  display:none;flex-direction:column;align-items:center;justify-content:flex-start;
+  padding:20px 24px 0;overflow:hidden}
 #gradingScreen.open{display:flex}
 .g-header{width:100%;display:flex;justify-content:space-between;align-items:center}
 .g-prog{font-family:'Syne',sans-serif;font-size:13px;color:var(--muted);letter-spacing:1px}
@@ -353,7 +353,7 @@ input[type=range]::-webkit-slider-thumb:active{transform:scale(1.2);cursor:grabb
 /* ── AUTH MODALS ── */
 .modal-overlay{position:fixed;inset:0;background:rgba(10,10,15,.85);backdrop-filter:blur(8px);
   z-index:300;display:none;align-items:center;justify-content:center;padding:20px}
-.modal-overlay.open{display:flex}
+.modal-overlay.open{display:flex !important}
 .modal{background:var(--surf);border:1px solid var(--border);border-radius:22px;
   padding:32px;width:min(440px,100%);display:flex;flex-direction:column;gap:12px;
   box-shadow:0 32px 80px rgba(0,0,0,.6);max-height:90vh;overflow-y:auto}
@@ -397,10 +397,47 @@ input[type=range]::-webkit-slider-thumb:active{transform:scale(1.2);cursor:grabb
   padding:5px 12px;border-radius:7px;cursor:pointer;font-size:12px;transition:all .2s}
 .sb-logout:hover{border-color:#ff6584;color:#ff6584}
 
-/* Grade management modal */
-.gm-overlay{position:fixed;inset:0;background:rgba(10,10,15,.88);backdrop-filter:blur(6px);
+/* ── ÖDEV MODÜLÜ ── */
+.hw-section{background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:16px}
+.hw-sec-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.hw-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;transition:border-color .2s}
+.hw-item:last-child{margin-bottom:0}
+.hw-item.hw-done{opacity:.55}
+.hw-item.hw-overdue{border-color:rgba(255,101,132,.3)}
+.hw-check{width:20px;height:20px;border-radius:5px;border:2px solid var(--border);background:transparent;cursor:pointer;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:all .2s;font-size:11px}
+.hw-check.checked{background:#43e97b;border-color:#43e97b;color:#0a0a0f}
+.hw-body{flex:1;min-width:0}
+.hw-title{font-size:14px;font-weight:600;margin-bottom:3px;line-height:1.3}
+.hw-meta{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hw-due{padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700}
+.hw-due.ok{background:rgba(67,233,123,.12);color:#43e97b}
+.hw-due.warn{background:rgba(255,215,0,.12);color:#ffd700}
+.hw-due.late{background:rgba(255,101,132,.12);color:#ff6584}
+.hw-subject-tag{padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;background:rgba(108,99,255,.12);color:#a09fff}
+.hw-actions{display:flex;gap:4px;flex-shrink:0}
+.hw-del-btn{width:26px;height:26px;border:1px solid var(--border);background:none;color:var(--muted);border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all .15s}
+.hw-del-btn:hover{border-color:#ff6584;color:#ff6584}
+/* Ödev ekleme formu */
+.hw-form{background:rgba(108,99,255,.06);border:1.5px dashed rgba(108,99,255,.3);border-radius:12px;padding:14px;margin-top:10px;display:none;flex-direction:column;gap:8px}
+.hw-form.open{display:flex}
+.hw-add-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(108,99,255,.1);border:1px dashed rgba(108,99,255,.4);color:var(--acc);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;transition:all .2s;margin-top:4px;width:fit-content}
+.hw-add-btn:hover{background:rgba(108,99,255,.2)}
+/* Öğretmen: not verme ekranında ödev listesi */
+.g-hw-list{width:min(480px,90vw);margin-top:12px;display:flex;flex-direction:column;gap:6px}
+.g-hw-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surf2);border:1px solid var(--border);border-radius:10px;transition:all .2s}
+.g-hw-item.g-hw-done{background:rgba(67,233,123,.08);border-color:rgba(67,233,123,.25)}
+.g-hw-tick{width:24px;height:24px;border-radius:6px;border:2px solid var(--border);background:transparent;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .2s}
+.g-hw-tick.ticked{background:#43e97b;border-color:#43e97b;color:#0a0a0f}
+.g-hw-label{flex:1;font-size:13px;font-weight:500;line-height:1.3}
+.g-hw-label.done-label{text-decoration:line-through;opacity:.6}
+.g-hw-date{font-size:10px;color:var(--muted);flex-shrink:0}
+/* Öğretmen: ödev sekmesi */
+.hw-class-select{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.hw-class-btn{padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surf2);color:var(--muted);font-size:12px;cursor:pointer;transition:all .2s}
+.hw-class-btn.active{background:rgba(108,99,255,.2);border-color:rgba(108,99,255,.4);color:var(--acc);font-weight:600}
   z-index:250;display:none;align-items:center;justify-content:center;padding:16px}
-.gm-overlay.open{display:flex}
+.gm-overlay{position:fixed;inset:0;background:rgba(10,10,15,.88);backdrop-filter:blur(6px);z-index:250;display:none;align-items:center;justify-content:center;padding:16px}
+.gm-overlay.open{display:flex !important}
 .gm-modal{background:var(--surf);border:1px solid var(--border);border-radius:16px;
   width:min(520px,100%);max-height:85vh;display:flex;flex-direction:column;
   box-shadow:0 24px 64px rgba(0,0,0,.6)}
@@ -440,6 +477,101 @@ input[type=range]::-webkit-slider-thumb:active{transform:scale(1.2);cursor:grabb
 .gm-avg{font-size:12px;color:var(--muted)}
 .gm-avg strong{color:var(--text);font-family:'Syne',sans-serif}
 
+/* ── ÖDEV MODÜLÜ ── */
+.hw-modal-overlay{position:fixed;inset:0;background:rgba(10,10,15,.88);backdrop-filter:blur(6px);
+  z-index:260;display:none;align-items:center;justify-content:center;padding:16px}
+.hw-modal-overlay.open{display:flex !important}
+.hw-modal{background:var(--surf);border:1px solid var(--border);border-radius:18px;
+  width:min(520px,100%);max-height:88vh;display:flex;flex-direction:column;
+  box-shadow:0 24px 64px rgba(0,0,0,.6)}
+.hw-header{padding:16px 20px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.hw-header-icon{font-size:22px}
+.hw-header-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;flex:1}
+.hw-close{background:none;border:1px solid var(--border);color:var(--muted);width:30px;height:30px;
+  border-radius:8px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center}
+.hw-close:hover{border-color:#ff6584;color:#ff6584}
+.hw-body{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.hw-item{background:var(--surf2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;
+  display:flex;align-items:flex-start;gap:10px;transition:all .2s}
+.hw-item.done{opacity:.55;border-color:transparent}
+.hw-item-check{width:22px;height:22px;border-radius:6px;border:2px solid var(--border);
+  background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;margin-top:1px;transition:all .2s;font-size:13px}
+.hw-item-check.checked{background:#2ed573;border-color:#2ed573;color:#0a0a0f}
+.hw-item-info{flex:1;min-width:0}
+.hw-item-title{font-size:13px;font-weight:600;line-height:1.4}
+.hw-item-meta{font-size:11px;color:var(--muted);margin-top:3px}
+.hw-item-due{font-size:10px;padding:2px 8px;border-radius:4px;margin-top:4px;display:inline-block;font-weight:600}
+.hw-item-due.today{background:rgba(255,215,0,.15);color:#ffd700}
+.hw-item-due.overdue{background:rgba(255,101,132,.12);color:#ff6584}
+.hw-item-due.upcoming{background:rgba(108,99,255,.12);color:#a09fff}
+.hw-add-form{background:rgba(108,99,255,.06);border:1.5px dashed rgba(108,99,255,.3);
+  border-radius:12px;padding:14px}
+.hw-add-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;
+  color:var(--acc);margin-bottom:10px}
+.hw-input{background:var(--surf);border:1px solid var(--border);color:var(--text);
+  padding:9px 12px;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;
+  outline:none;width:100%;transition:border .2s;margin-bottom:8px}
+.hw-input:focus{border-color:var(--acc)}
+.hw-add-btn{background:linear-gradient(135deg,#6c63ff,#8b5cf6);border:none;color:#fff;
+  padding:10px;border-radius:9px;font-family:'Syne',sans-serif;font-size:13px;
+  font-weight:700;cursor:pointer;transition:all .2s;width:100%}
+.hw-add-btn:hover{opacity:.9}
+.hw-empty{text-align:center;padding:32px 16px;color:var(--muted);font-size:13px}
+
+/* Ödev rozeti - öğrenci ve notlandırma ekranında */
+.hw-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(255,215,0,.12);
+  border:1px solid rgba(255,215,0,.3);color:#ffd700;font-size:11px;font-weight:700;
+  padding:3px 10px;border-radius:6px;cursor:pointer;transition:all .2s}
+.hw-badge:hover{background:rgba(255,215,0,.2)}
+.hw-badge-count{background:#ffd700;color:#0a0a0f;border-radius:4px;
+  padding:1px 5px;font-size:10px;margin-left:2px}
+
+/* Notlandırma ekranında ödev listesi */
+.g-hw-list{width:min(480px,90vw);margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.g-hw-row{background:var(--surf2);border:1px solid var(--border);border-radius:10px;
+  padding:10px 14px;display:flex;align-items:center;gap:10px}
+.g-hw-check{width:24px;height:24px;border-radius:6px;border:2px solid var(--border);
+  background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;font-size:14px;transition:all .15s}
+.g-hw-check.done{background:#2ed573;border-color:#2ed573;color:#0a0a0f}
+.g-hw-title{flex:1;font-size:12px;color:var(--text);line-height:1.4}
+.g-hw-date{font-size:10px;color:var(--muted);flex-shrink:0}
+
+/* Öğrenci ödev paneli */
+.s-hw-card{background:var(--surf);border:1px solid var(--border);border-radius:12px;
+  padding:16px;margin-bottom:16px}
+.s-hw-title-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.s-hw-section{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted)}
+.s-hw-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;
+  background:var(--surf2);border:1px solid var(--border);border-radius:9px;margin-bottom:6px}
+.s-hw-item:last-child{margin-bottom:0}
+.s-hw-item-title{font-size:13px;font-weight:500;line-height:1.4}
+.s-hw-item-meta{font-size:10px;color:var(--muted);margin-top:2px}
+.s-hw-dot{width:8px;height:8px;border-radius:50%;background:var(--acc);flex-shrink:0;margin-top:4px}
+/* Ödev istatistik kartları */
+.s-hw-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.s-hw-stat{background:var(--surf2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;text-align:center}
+.s-hw-stat-val{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;line-height:1;margin-bottom:2px}
+.s-hw-stat-lbl{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+.s-hw-progress-wrap{margin-bottom:14px}
+.s-hw-progress-bar{height:8px;background:var(--surf2);border-radius:100px;overflow:hidden;margin-top:6px}
+.s-hw-progress-fill{height:100%;border-radius:100px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.s-hw-progress-label{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:4px}
+
+
+/* Sınıf seçim kartı */
+.cls-select-item{display:flex;align-items:center;gap:12px;padding:12px 14px;
+  background:var(--surf2);border:1.5px solid var(--border);border-radius:11px;
+  cursor:pointer;transition:all .2s;user-select:none}
+.cls-select-item:hover{border-color:var(--acc);background:rgba(108,99,255,.06)}
+.cls-select-item.selected{border-color:var(--acc);background:rgba(108,99,255,.12)}
+.cls-select-check{width:22px;height:22px;border-radius:6px;border:2px solid var(--border);
+  display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;
+  transition:all .2s;background:none}
+.cls-select-item.selected .cls-select-check{background:var(--acc);border-color:var(--acc);color:#fff}
+.cls-select-name{font-size:14px;font-weight:600;flex:1}
+.cls-select-sub{font-size:11px;color:var(--muted);margin-top:2px}
 </style>
 
 <!-- PWA Service Worker -->
@@ -457,76 +589,102 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 // ── Mock Supabase (localStorage tabanlı, her ortamda çalışır) ──────────────
 function makeMock() {
-  const getTable = (t) => { try { return JSON.parse(localStorage.getItem('mock_'+t) || '[]'); } catch(e){ return []; } };
-  const saveTable = (t, d) => { try { localStorage.setItem('mock_'+t, JSON.stringify(d)); } catch(e){} };
-  const ciEq = (a, b) => typeof a === 'string' && typeof b === 'string'
-    ? a.toLocaleLowerCase('tr-TR').trim() === b.toLocaleLowerCase('tr-TR').trim() : a == b;
-
-  const makeSelect = (table) => {
-    let filters = [];
-    const resolve = () => {
-      let rows = getTable(table);
-      filters.forEach(f => { rows = rows.filter(r => ciEq(r[f.col], f.val)); });
-      return rows;
-    };
-    const chain = {
-      eq:     (col, val) => { filters.push({col, val}); return chain; },
-      single: async ()   => ({ data: resolve()[0] || null, error: null }),
-      order:  ()         => chain,
-      then:   async (fn) => fn({ data: resolve(), error: null }),
-      catch:  ()         => Promise.resolve({ data: resolve(), error: null }),
-    };
-    return chain;
+  const getTable = t => { try { return JSON.parse(localStorage.getItem('mock_'+t)||'[]'); } catch(e){ return []; } };
+  const saveTable = (t,d) => { try { localStorage.setItem('mock_'+t, JSON.stringify(d)); } catch(e){} };
+  const ciEq = (a,b) => {
+    if (a === null || b === null) return a == b;
+    if (typeof a === 'string' && typeof b === 'string')
+      return a.toLocaleLowerCase('tr-TR').trim() === b.toLocaleLowerCase('tr-TR').trim();
+    return String(a) === String(b);
   };
 
-  const makeInsert = (table, rowOrRows) => {
-    let inserted = false;
-    const doInsert = () => {
-      if (inserted) return; inserted = true;
+  function buildSelect(table) {
+    // Her select çağrısı kendi bağımsız filters listesine sahip
+    const filters = [];
+    const api = {
+      eq(col, val)  { filters.push({col, val}); return api; },
+      order()       { return api; },
+      limit()       { return api; },
+      single: async function() {
+        let rows = getTable(table);
+        filters.forEach(f => { rows = rows.filter(r => ciEq(r[f.col], f.val)); });
+        return { data: rows[0] || null, error: null };
+      },
+      then: function(resolve, reject) {
+        let rows = getTable(table);
+        filters.forEach(f => { rows = rows.filter(r => ciEq(r[f.col], f.val)); });
+        return Promise.resolve({ data: rows, error: null }).then(resolve, reject);
+      }
+    };
+    return api;
+  }
+
+  function buildInsert(table, rowOrRows) {
+    let done = false;
+    const doIt = () => {
+      if (done) return;
+      done = true;
       const rows = getTable(table);
       const items = Array.isArray(rowOrRows) ? rowOrRows : [rowOrRows];
       items.forEach(row => {
-        rows.push({ ...row, id: Date.now().toString(36) + Math.random().toString(36).slice(2), created_at: new Date().toISOString() });
+        rows.push({ ...row,
+          id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+          created_at: new Date().toISOString()
+        });
       });
       saveTable(table, rows);
     };
-    const chain = {
-      select: () => ({ single: async () => { doInsert(); return { data: getTable(table).slice(-1)[0], error: null }; } }),
-      then:   async (fn) => { doInsert(); return fn({ data: null, error: null }); },
-      catch:  ()         => Promise.resolve({ data: null, error: null }),
+    return {
+      select() { return { single: async () => { doIt(); return { data: getTable(table).slice(-1)[0], error: null }; } }; },
+      then(resolve, reject) { doIt(); return Promise.resolve({ data: null, error: null }).then(resolve, reject); }
     };
-    return chain;
-  };
+  }
+
+  function buildUpdate(table, updates) {
+    return {
+      eq(col, val) {
+        return {
+          eq(c2, v2) {
+            const rows = getTable(table).map(r =>
+              ciEq(r[col],val) && ciEq(r[c2],v2) ? {...r,...updates} : r
+            );
+            saveTable(table, rows);
+            return Promise.resolve({ data: null, error: null });
+          },
+          then(resolve, reject) {
+            const rows = getTable(table).map(r => ciEq(r[col],val) ? {...r,...updates} : r);
+            saveTable(table, rows);
+            return Promise.resolve({ data: null, error: null }).then(resolve, reject);
+          }
+        };
+      }
+    };
+  }
+
+  function buildDelete(table) {
+    return {
+      eq(col, val) {
+        saveTable(table, getTable(table).filter(r => !ciEq(r[col], val)));
+        return Promise.resolve({ data: null, error: null });
+      }
+    };
+  }
 
   return {
-    from: (table) => ({
-      select:  ()        => makeSelect(table),
-      insert:  (rows)    => makeInsert(table, rows),
-      upsert:  async (row) => {
-        const rows = getTable(table).filter(r => r.id !== row.id);
-        rows.push({ ...row, created_at: new Date().toISOString() });
-        saveTable(table, rows);
-        return { data: row, error: null };
-      },
-      update: (updates) => ({
-        eq: (col, val) => ({
-          eq: async (c2, v2) => {
-            saveTable(table, getTable(table).map(r => ciEq(r[col],val) && ciEq(r[c2],v2) ? {...r,...updates} : r));
-            return { data: null, error: null };
-          },
-          then: async (fn) => {
-            saveTable(table, getTable(table).map(r => ciEq(r[col],val) ? {...r,...updates} : r));
-            return fn({ data: null, error: null });
-          }
-        })
-      }),
-      delete: () => ({
-        eq: (col, val) => {
-          saveTable(table, getTable(table).filter(r => !ciEq(r[col], val)));
-          return { data: null, error: null };
+    from(table) {
+      return {
+        select()         { return buildSelect(table); },
+        insert(rows)     { return buildInsert(table, rows); },
+        update(updates)  { return buildUpdate(table, updates); },
+        delete()         { return buildDelete(table); },
+        upsert: async function(row) {
+          const rows = getTable(table).filter(r => r.id !== row.id);
+          rows.push({ ...row, created_at: new Date().toISOString() });
+          saveTable(table, rows);
+          return { data: row, error: null };
         }
-      }),
-    })
+      };
+    }
   };
 }
 
@@ -535,42 +693,39 @@ const _forceLocal = window.self !== window.top
   || ['localhost','127.0.0.1'].includes(window.location.hostname)
   || ['blob:','file:'].includes(window.location.protocol);
 
-let sb;
-if (_forceLocal) {
-  sb = makeMock();
-  console.log('🔧 Mock mod aktif (localStorage)');
-} else {
+// Başlangıçta her zaman mock — Supabase hazır olunca yükselt
+let sb = makeMock();
+let _sbReal = null;
+
+if (!_forceLocal) {
   try {
-    sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    _sbReal = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: { persistSession:false, autoRefreshToken:false, detectSessionInUrl:false,
         storage: { getItem:()=>null, setItem:()=>{}, removeItem:()=>{} } }
     });
-    // Bağlantıyı test et — başarısız olursa mock'a düş
-    sb.from('teachers').select('id').limit(1).then(res => {
-      if (res?.error?.message?.includes('fetch') || res?.error?.message?.includes('Load')) {
-        console.warn('⚠️ Supabase erişilemiyor, mock moda geçildi');
-        sb = makeMock();
+    // Bağlantıyı test et — başarılı olursa gerçek Supabase'e geç
+    _sbReal.from('teachers').select('id').limit(1).then(res => {
+      if (!res?.error) {
+        sb = _sbReal;
+        console.log('🚀 Supabase bağlantısı aktif');
       } else {
-        console.log('🚀 Supabase aktif');
+        console.warn('⚠️ Supabase hatası, localStorage modu:', res.error.message);
       }
-    }).catch(() => { sb = makeMock(); console.warn('⚠️ Supabase bağlantı hatası, mock mod'); });
+    }).catch(e => {
+      console.warn('⚠️ Supabase erişilemiyor, localStorage modu:', e.message);
+    });
   } catch(e) {
-    sb = makeMock();
-    console.warn('⚠️ Supabase başlatılamadı, mock mod:', e);
+    console.warn('⚠️ Supabase başlatılamadı:', e.message);
   }
+} else {
+  console.log('🔧 localStorage modu aktif');
 }
 
 </script>
 
 </head>
 <body>
-<script>
-if (!localStorage.getItem('_reset_v8')) {
-  localStorage.clear(); sessionStorage.clear();
-  localStorage.setItem('_reset_v8', '1');
-  location.reload();
-}
-</script>
+
 
 <!-- HOME -->
 <div id="home" class="screen active">
@@ -583,8 +738,7 @@ if (!localStorage.getItem('_reset_v8')) {
       <button class="btn btn-s" onclick="goto('student')">🎒 Öğrenci Girişi</button>
     </div>
   </div>
-  <div style="position:absolute;bottom:18px;left:0;right:0;text-align:center;
-    font-size:11px;color:rgba(160,159,255,.5);letter-spacing:.5px;z-index:1">designed by <span style="font-weight:700;color:rgba(160,159,255,.7);letter-spacing:.3px">Raşit Emre</span></div>
+
 </div>
 
 <!-- TEACHER -->
@@ -598,6 +752,7 @@ if (!localStorage.getItem('_reset_v8')) {
     <div style="display:flex;gap:6px;align-items:center">
       <div class="period-btns" style="margin-right:4px">
         <button class="tab" id="tabBtnList" onclick="switchTeacherTab('list')" style="padding:6px 14px">Sınıf Listesi</button>
+        <button class="tab" id="tabBtnHw" onclick="switchTeacherTab('hw')" style="padding:6px 14px">📚 Ödevler</button>
         <button class="tab" id="tabBtnReq" onclick="switchTeacherTab('req')" style="padding:6px 14px">Öğrenci İstekleri</button>
       </div>
       <button class="back" id="btnAdmin" onclick="openAdminPanel()" style="display:none;background:rgba(108,99,255,.15);border-color:var(--acc);color:var(--acc)">🛡️ Yönetici</button>
@@ -606,6 +761,7 @@ if (!localStorage.getItem('_reset_v8')) {
     <!-- Mobil alt satır -->
     <div class="mobile-topbar-actions">
       <button class="tab" onclick="switchTeacherTab('list')" style="padding:5px 10px;font-size:11px;flex:1;text-align:center">📋 Sınıflar</button>
+      <button class="tab" onclick="switchTeacherTab('hw')" style="padding:5px 10px;font-size:11px;flex:1;text-align:center">📚 Ödev</button>
       <button class="tab" onclick="switchTeacherTab('req')" style="padding:5px 10px;font-size:11px;flex:1;text-align:center" id="tabBtnReqM">📩 İstekler</button>
       <button class="tab" onclick="document.getElementById('pdfInput').click()" style="padding:5px 10px;font-size:11px;flex:1;text-align:center">📄 PDF</button>
     </div>
@@ -666,7 +822,10 @@ if (!localStorage.getItem('_reset_v8')) {
               <div class="cls-title" id="clsTitle"></div>
               <div class="cls-sub" id="clsSub"></div>
             </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="grade-btn" onclick="startGrading()">▶ Not Vermeye Başla</button>
+            <button class="grade-btn" onclick="openHwModal()" style="background:linear-gradient(135deg,#ffd700,#ffb347);color:#0a0a0f">📚 Ödevler</button>
+          </div>
           </div>
           <div class="stu-grid" id="stuGrid"></div>
         </div>
@@ -676,6 +835,38 @@ if (!localStorage.getItem('_reset_v8')) {
       <div id="tabReq" style="flex:1;overflow-y:auto;padding:28px;display:none">
         <div style="font-family:'Syne',sans-serif;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:14px">Öğrenci Giriş İstekleri</div>
         <div id="reqList"></div>
+      </div>
+
+      <!-- Tab: Homework -->
+      <div id="tabHw" style="flex:1;overflow-y:auto;padding:28px;display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+          <div style="font-family:'Syne',sans-serif;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)">Ödev Yönetimi</div>
+          <button class="hw-add-btn" onclick="toggleHwForm()">➕ Yeni Ödev</button>
+        </div>
+        <!-- Sınıf filtresi -->
+        <div class="hw-class-select" id="hwClassFilter"></div>
+        <!-- Ödev ekleme formu -->
+        <div class="hw-form" id="hwForm">
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Yeni Ödev Ekle</div>
+          <input class="f-input" id="hwTitle" placeholder="Ödev başlığı (örn: Sayfa 45-47 sorular)" style="font-size:13px">
+          <textarea class="g-note" id="hwDesc" rows="2" placeholder="Açıklama (isteğe bağlı)" style="font-size:12px"></textarea>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <div style="flex:1;min-width:120px">
+              <label class="f-label">Son Tarih</label>
+              <input class="f-input" id="hwDue" type="date" style="font-size:13px">
+            </div>
+            <div style="flex:1;min-width:140px">
+              <label class="f-label">Sınıf</label>
+              <select class="sel" id="hwClass" style="width:100%;max-width:100%"></select>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button class="grade-btn" onclick="addHomework()" style="flex:1;font-size:13px;padding:10px">✓ Kaydet</button>
+            <button class="modal-btn secondary" onclick="toggleHwForm()" style="margin:0;padding:10px 16px;font-size:13px">İptal</button>
+          </div>
+        </div>
+        <!-- Ödev listesi -->
+        <div id="hwList"></div>
       </div>
     </div>
   </div>
@@ -797,6 +988,15 @@ if (!localStorage.getItem('_reset_v8')) {
       </div>
     </div>
 
+    <!-- Ödevler -->
+    <div class="s-hw-card" id="sHwWrap" style="display:none">
+      <div class="s-hw-title-row">
+        <div class="s-hw-section">📚 Ödevler</div>
+        <span id="sHwCount" style="font-size:11px;color:var(--muted)"></span>
+      </div>
+      <div id="sHwList"></div>
+    </div>
+
     <!-- Teacher Notes -->
     <div class="teacher-notes" id="teacherNotesWrap" style="display:none">
       <div class="tn-title">📝 Öğretmen Notları</div>
@@ -812,7 +1012,7 @@ if (!localStorage.getItem('_reset_v8')) {
     <button class="back" onclick="closeGrading()">✕ Kapat</button>
   </div>
   <div id="gBody"></div>
-  <div style="display:flex;flex-direction:column;align-items:center">
+  <div style="display:flex;flex-direction:column;align-items:center;width:100%;overflow-y:auto;flex:1;padding-bottom:20px">
     <div class="g-slider-wrap" style="margin-top:12px">
       <div class="g-bubble-wrap">
         <div class="g-bubble" id="gBubble">50</div>
@@ -821,23 +1021,40 @@ if (!localStorage.getItem('_reset_v8')) {
       <div class="g-slider-labels"><span>1</span><span>50</span><span>100</span></div>
     </div>
     <button class="g-next" id="gNext" onclick="saveAndNext()">Kaydet & İleri →</button>
-    <div style="width:100%;max-width:400px;margin-top:14px">
-      <textarea id="gNote" class="g-note" rows="3" placeholder="Bu öğrenci hakkında not yazın (isteğe bağlı)…"></textarea>
+    <!-- Ödev kontrol listesi -->
+    <div class="g-hw-list" id="gHwList" style="display:none;margin-top:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">📚 Ödev Kontrolü</div>
+      <div id="gHwItems"></div>
+    </div>
+    <div style="width:100%;max-width:480px;margin-top:10px">
+      <textarea id="gNote" class="g-note" rows="2" placeholder="Bu öğrenci hakkında not yazın (isteğe bağlı)…"></textarea>
       <div id="gNotePrev" class="g-note-prev"></div>
     </div>
   </div>
 </div>
 
 
+
+<!-- SINIF SEÇİM MODAL (öğretmen girişi sonrası) -->
+<div id="classSelectModal" class="modal-overlay" style="display:none">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-title">📋 Sınıflarınızı Seçin</div>
+    <div class="modal-sub" id="classSelectSub">Hangi sınıflara giriyorsunuz? İlgili sınıfların yanına tik atın.</div>
+    <div class="modal-sep"></div>
+    <div id="classSelectList" style="display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto"></div>
+    <button class="modal-btn" onclick="saveClassSelection()" style="margin-top:8px">Kaydet →</button>
+  </div>
+</div>
+
 <!-- TEACHER AUTH MODAL -->
-<div id="teacherModal" class="modal-overlay">
+<div id="teacherModal" class="modal-overlay" style="display:none">
   <div class="modal">
     <div id="teacherModalInner"><!-- filled by JS --></div>
   </div>
 </div>
 
 <!-- ADMIN PANEL MODAL -->
-<div id="adminPanelModal" class="modal-overlay">
+<div id="adminPanelModal" class="modal-overlay" style="display:none">
   <div class="modal" style="max-width:580px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
       <div class="modal-title">🛡️ Yönetici Paneli</div>
@@ -857,8 +1074,21 @@ if (!localStorage.getItem('_reset_v8')) {
   </div>
 </div>
 
+
+<!-- ÖDEV MODÜLÜ MODAL -->
+<div id="hwModal" class="hw-modal-overlay" style="display:none" onclick="if(event.target===this)closeHwModal()">
+  <div class="hw-modal">
+    <div class="hw-header">
+      <div class="hw-header-icon">📚</div>
+      <div class="hw-header-title" id="hwModalTitle">Ödevler</div>
+      <button class="hw-close" onclick="closeHwModal()">✕</button>
+    </div>
+    <div class="hw-body" id="hwModalBody"></div>
+  </div>
+</div>
+
 <!-- GRADE MANAGEMENT MODAL -->
-<div id="gradeModal" class="gm-overlay" onclick="if(event.target===this)closeGradeModal()">
+<div id="gradeModal" class="gm-overlay" style="display:none" onclick="if(event.target===this)closeGradeModal()">
   <div class="gm-modal">
     <div class="gm-header">
       <div class="gm-photo" id="gmPhoto">👤</div>
@@ -1191,14 +1421,7 @@ async function teacherRegister() {
     }
   } catch(e) {
     console.error('teacherRegister hata:', e);
-    // Network hatası ise mock'a geç ve tekrar dene
-    if (e.message && (e.message.includes('Load failed') || e.message.includes('fetch') || e.message.includes('network'))) {
-      console.warn('Supabase erişilemiyor, mock moda geçiliyor...');
-      sb = makeMock();
-      tMsg('Çevrimdışı mod aktif, lütfen tekrar deneyin.', 'warn');
-    } else {
-      tMsg('Hata: ' + (e.message || e), 'err');
-    }
+    tMsg('Hata: ' + (e.message || String(e)), 'err');
   }
 }
 
@@ -1239,10 +1462,17 @@ async function teacherLogin() {
   const name = normName(rawName);
 
   try {
+    // DEBUG: mock tablosunu konsola yaz
+    const _dbg = JSON.parse(localStorage.getItem('mock_teachers')||'[]');
+    console.log('mock_teachers:', JSON.stringify(_dbg));
+    console.log('aranan name:', name, 'kurum:', kurumKodu);
+
     const { data: teacher } = await sb.from('teachers').select('*').eq('full_name', name).eq('kurum_kodu', kurumKodu).single();
-    if (!teacher) return tMsg('Kayıtlı öğretmen bulunamadı.', 'err');
+    console.log('bulunan teacher:', teacher);
+    if (!teacher) return tMsg('Kayıtlı öğretmen bulunamadı. (Konsolu kontrol edin)', 'err');
 
     const passEncoded = btoa(unescape(encodeURIComponent(pass)));
+    console.log('passEncoded:', passEncoded, 'db pass_hash:', teacher.pass_hash);
     if (passEncoded !== teacher.pass_hash) return tMsg('Şifre hatalı.', 'err');
     if (teacher.status === 'pending') return tMsg('Hesabınız henüz onaylanmadı.', 'warn');
     if (teacher.status === 'rejected') return tMsg('Hesabınız askıya alındı.', 'err');
@@ -1250,6 +1480,9 @@ async function teacherLogin() {
     const isAdmin = teacher.is_admin === true || teacher.is_admin === 'true';
     currentTeacher = { id: teacher.id, name: teacher.full_name, branch: teacher.branch,
       kurumKodu: teacher.kurum_kodu, schoolName: teacher.school_name, isAdmin };
+    // Oturumu kalıcı olarak kaydet
+    ST.savedTeacher = { ...currentTeacher };
+    saveST();
 
   closeTeacherAuth();
   document.getElementById('sbTeacherName').textContent = teacher.full_name;
@@ -1258,6 +1491,8 @@ async function teacherLogin() {
 
   loadTeacherData();
   goto('teacher');
+  // PDF varsa sınıf seçimini kontrol et
+  setTimeout(checkAndShowClassSelect, 600);
 
   // Admin toast bildirimi
   if (isAdmin) {
@@ -1271,17 +1506,14 @@ async function teacherLogin() {
   }
   } catch(e) {
     console.error('teacherLogin hata:', e);
-    if (e.message && (e.message.includes('Load failed') || e.message.includes('fetch') || e.message.includes('network'))) {
-      sb = makeMock();
-      tMsg('Çevrimdışı mod aktif, lütfen tekrar deneyin.', 'warn');
-    } else {
-      tMsg('Bağlantı hatası: ' + (e.message || e), 'err');
-    }
+    tMsg('Giriş hatası: ' + (e.message || String(e)), 'err');
   }
 }
 
 function teacherLogout() {
   currentTeacher = null;
+  ST.savedTeacher = null;
+  saveST();
   document.getElementById('btnAdmin').style.display = 'none';
   closeSidebar();
   goto('home');
@@ -1298,6 +1530,11 @@ function closeSidebar() {
 
 // __ KURUM BAZLI PDF STORAGE (ayni okuldaki tum ogretmenler paylasir)
 function getTeacherPdfKey() {
+  if (!currentTeacher) return null;
+  // Öğretmene özel key — her öğretmenin fotoğrafları ayrı saklanır
+  return 'teacherPdf_' + currentTeacher.id;
+}
+function getKurumPdfKey() {
   if (!currentTeacher) return null;
   return 'kurumPdf_' + currentTeacher.kurumKodu;
 }
@@ -1449,15 +1686,17 @@ function loadST() {
   } catch(e) { return {}; }
 }
 function saveST() {
-  // Save everything except photoData (base64 too large for localStorage)
   const slim = {
     grades: ST.grades,
     requests: ST.requests,
     period: ST.period,
     loggedIn: ST.loggedIn,
+    studentSession: ST.studentSession || null,
     schoolName: ST.schoolName,
     activeClass: ST.activeClass,
-    // Save class metadata without photos
+    savedTeacher: ST.savedTeacher || null,
+    homeworks: ST.homeworks || {},
+    teacherClasses: ST.teacherClasses || {},
     classMeta: Object.fromEntries(
       Object.entries(ST.classes).map(([k, cls]) => [k, {
         name: cls.name,
@@ -1470,12 +1709,16 @@ function saveST() {
 }
 
 const ST = {
-  classes: {},       // key -> { name, school, students: [{name, number, photoData}] }
+  classes: {},
   activeClass: null,
-  grades: {},        // "classKey:studentIdx" -> [{date, score}]
-  requests: [],      // [{name, number, ts, classKey, studentIdx (matched)}]
+  grades: {},
+  requests: [],
   period: 'daily',
   loggedIn: null,
+  studentSession: null,
+  savedTeacher: null,
+  homeworks: {},
+  teacherClasses: {},   // teacherId -> [classKey, ...]  — öğretmenin girdiği sınıflar
   schoolName: '',
   ...loadST()
 };
@@ -1497,6 +1740,31 @@ function loadPhotos(classKey, students) {
 
 // Re-attach photos to classes on init
 Object.keys(ST.classes).forEach(k => loadPhotos(k, ST.classes[k].students));
+
+// ── Sayfa açılışında oturumu otomatik geri yükle ──────────────────────────
+(async function restoreSession() {
+  // Öğretmen oturumu
+  if (ST.savedTeacher) {
+    try {
+      const t = ST.savedTeacher;
+      currentTeacher = t;
+      document.getElementById('btnAdmin').style.display = t.isAdmin ? '' : 'none';
+      document.getElementById('sbTeacherName').textContent = t.name;
+      document.getElementById('sbTeacherBranch').textContent = t.branch || '';
+      loadTeacherData();
+      goto('teacher', false);
+      return;
+    } catch(e) { ST.savedTeacher = null; saveST(); }
+  }
+  // Öğrenci oturumu
+  if (ST.loggedIn !== null && ST.loggedIn !== undefined) {
+    const req = ST.requests[ST.loggedIn];
+    if (req && req.classKey && req.studentIdx !== null) {
+      goto('student', false);
+      return;
+    }
+  }
+})();
 
 
 // ═══════════════════════════════════════════════════════════════
@@ -1528,9 +1796,45 @@ function autoLoadPreloaded() {
 function goto(id, pushHistory) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  if (id === 'teacher') { if (!currentTeacher) { goto('home', false); return; } autoLoadPreloaded(); updateLastPdfBtn(); renderTeacher(); }
-  if (id === 'student') renderStudentPage();
+  if (id === 'teacher') {
+    if (!currentTeacher) { goto('home', false); return; }
+    autoLoadPreloaded(); updateLastPdfBtn(); renderTeacher();
+  }
+  if (id === 'student') restoreOrResetStudentPage();
   if (pushHistory !== false) navPush();
+}
+
+function restoreOrResetStudentPage() {
+  // Kayıtlı oturum var mı?
+  if (ST.loggedIn !== null && ST.loggedIn !== undefined && ST.studentSession) {
+    studentSession = ST.studentSession;
+    const req = ST.requests[ST.loggedIn];
+    if (req && req.classKey && req.studentIdx !== null) {
+      // Ders seçimine git
+      document.getElementById('sLoginWrap').style.display = 'none';
+      document.getElementById('sSubjectWrap').style.display = 'none';
+      document.getElementById('sDash').style.display = 'block';
+      document.getElementById('btnBackSubjects').style.display = 'block';
+      showDash(ST.loggedIn);
+      return;
+    }
+  }
+  if (ST.loggedIn !== null && ST.loggedIn !== undefined && !ST.studentSession) {
+    // Eşleşmiş ama ders seçmemiş
+    studentSession = null;
+    const req = ST.requests[ST.loggedIn];
+    if (req) {
+      document.getElementById('sLoginWrap').style.display = 'none';
+      document.getElementById('sDash').style.display = 'none';
+      showSubjectSelect(ST.loggedIn, req.schoolName || '');
+      return;
+    }
+  }
+  // Oturum yok — login ekranını göster ama sıfırlama
+  document.getElementById('sLoginWrap').style.display = 'flex';
+  document.getElementById('sSubjectWrap').style.display = 'none';
+  document.getElementById('sDash').style.display = 'none';
+  document.getElementById('sMsg').style.display = 'none';
 }
 
 // ── GERİ TUŞU SİSTEMİ ──
@@ -1562,7 +1866,7 @@ function getCurrentLayer() {
 
 window.addEventListener('popstate', function(e) {
   const layer = getCurrentLayer();
-  
+
   switch(layer) {
     case 'grading':
       document.getElementById('gradingScreen').classList.remove('open');
@@ -1580,18 +1884,34 @@ window.addEventListener('popstate', function(e) {
       closeTeacherAuth();
       break;
     case 'teacher':
-      // Öğretmen ekranından home'a dön ama oturumu kapat
-      goto('home', false);
+      // Öğretmen ekranı — home'a dön, oturumu KAPATMA
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById('home').classList.add('active');
       break;
     case 'student':
-      goto('home', false);
+      // Öğrenci dashboard'daysa ders seçimine dön
+      if (document.getElementById('sDash').style.display !== 'none') {
+        document.getElementById('sDash').style.display = 'none';
+        document.getElementById('btnBackSubjects').style.display = 'none';
+        if (ST.loggedIn !== null && ST.loggedIn !== undefined) {
+          const req = ST.requests[ST.loggedIn];
+          showSubjectSelect(ST.loggedIn, req?.schoolName || '');
+        }
+      } else if (document.getElementById('sSubjectWrap').style.display !== 'none') {
+        // Ders seçimindeyse home'a dön, oturumu KAPATMA
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById('home').classList.add('active');
+      } else {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById('home').classList.add('active');
+      }
       break;
     default:
-      // Home'dayız, bir şey yapma
+      // Home'dayız — uygulamadan çıkma, stack'te kal
       break;
   }
-  
-  // Her zaman stack'te entry olsun
+
+  // Her zaman stack'te entry olsun, uygulamadan çıkılmasın
   navPush();
 });
 
@@ -1636,7 +1956,19 @@ async function handlePDF(file) {
     ST.activeClass = null;
     renderTeacher();
 
-    if (newClasses === 0) alert('PDF\'de yeni sınıf bulunamadı. Lütfen e-Okul formatında bir PDF yükleyin.');
+    if (newClasses === 0) {
+      alert('PDF\'de yeni sınıf bulunamadı. Lütfen e-Okul formatında bir PDF yükleyin.');
+    } else {
+      // Yeni sınıflar geldi — öğretmen seçimini yenile
+      const myKeys = getMyClasses();
+      if (myKeys !== null) {
+        // Yeni gelen sınıfları otomatik ekleme, seçim ekranını aç
+        setTimeout(() => openClassSelectModal(), 400);
+      } else {
+        // İlk kez yükleme — seçim ekranını aç
+        setTimeout(() => openClassSelectModal(), 400);
+      }
+    }
 
   } catch(err) {
     hideLoading();
@@ -1803,15 +2135,19 @@ function renderTeacher() {
   // School name
   document.getElementById('schoolNameBadge').textContent = ST.schoolName || '';
 
-  // Sidebar
+  // Sidebar — sadece öğretmenin seçtiği sınıflar
   const sbList = document.getElementById('sbList');
-  const keys = Object.keys(ST.classes);
-  if (keys.length === 0) {
+  const allKeys = Object.keys(ST.classes);
+  const myKeys = getMyClasses(); // null=henüz seçim yok, []=boş seçim
+  const keys = myKeys === null ? allKeys : myKeys.filter(k => ST.classes[k]);
+
+  if (allKeys.length === 0) {
     sbList.innerHTML = '<div style="padding:12px;color:var(--muted);font-size:12px;line-height:1.6">Aşağıdaki butonlardan PDF yükleyin veya son yüklemeyi getirin.</div>';
+  } else if (keys.length === 0) {
+    sbList.innerHTML = '<div style="padding:12px;color:var(--muted);font-size:12px;line-height:1.6">Henüz sınıf seçmediniz.<br><span style=\"color:var(--acc);cursor:pointer\" onclick=\"openClassSelectModal()\">+ Sınıf seç</span></div>';
   } else {
     sbList.innerHTML = keys.map(k => {
       const cls = ST.classes[k];
-      // Grade progress
       const graded = cls.students.filter((_, i) => (ST.grades[`${k}:${i}:${currentTeacher?.id}`] || []).length > 0).length;
       const pct = cls.students.length ? Math.round(graded / cls.students.length * 100) : 0;
       return `<div class="sb-item ${ST.activeClass === k ? 'active' : ''}" onclick="selectClass('${k}')">
@@ -1821,21 +2157,22 @@ function renderTeacher() {
           <div class="sb-progress"><div class="sb-progress-fill" style="width:${pct}%"></div></div>
         </div>
       </div>`;
-    }).join('');
+    }).join('') + '<div class="sb-add" onclick="openClassSelectModal()" style="margin-top:4px">✎ Sınıfları Düzenle</div>';
   }
 
   // Mobil sınıf bar
   const mcb = document.getElementById('mobileClassBar');
   if (mcb) {
-    if (keys.length === 0) {
+    if (allKeys.length === 0) {
       mcb.innerHTML = '<div class="mcb-pdf" onclick="document.getElementById(\'pdfInput\').click()">📄 PDF Yükle</div>';
       mcb.style.display = '';
     } else {
       mcb.style.display = '';
-      mcb.innerHTML = keys.map(k => {
+      const showKeys = keys.length > 0 ? keys : allKeys;
+      mcb.innerHTML = showKeys.map(k => {
         const cls = ST.classes[k];
         return `<div class="mcb-item ${ST.activeClass === k ? 'active' : ''}" onclick="selectClass('${k}')">${cls.name}</div>`;
-      }).join('');
+      }).join('') + '<div class="mcb-item" onclick="openClassSelectModal()" style="color:var(--acc);font-size:16px">✎</div>';
     }
   }
 
@@ -1843,9 +2180,11 @@ function renderTeacher() {
   if (!ST.activeClass) {
     document.getElementById('classView').style.display = 'none';
     const es = document.getElementById('emptyState');
-    if (keys.length > 0) {
+    if (allKeys.length > 0) {
       es.style.display = 'flex';
-      es.innerHTML = '<div class="no-data-icon">📋</div><p>Bir sınıf seçin.</p>';
+      es.innerHTML = keys.length === 0
+        ? '<div class="no-data-icon">📋</div><p>Sınıf seçmediniz.</p><button class="grade-btn" onclick="openClassSelectModal()" style="margin-top:12px;font-size:13px;padding:10px 22px">+ Sınıf Seç</button>'
+        : '<div class="no-data-icon">📋</div><p>Bir sınıf seçin.</p>';
     }
   }
 
@@ -2014,6 +2353,9 @@ function showGrading() {
   } else {
     document.getElementById('gNotePrev').innerHTML = '';
   }
+
+  // Ödev kontrol listesini göster
+  renderGradingHwList(gradIdx);
 }
 
 function onSlide(val) {
@@ -2347,6 +2689,9 @@ async function showSubjectSelect(reqIdx, schoolName) {
 
 function selectSubject(reqIdx, teacherId, teacherName, branch) {
   studentSession = { reqIdx, teacherId, teacherName, branch };
+  ST.studentSession = studentSession;
+  ST.loggedIn = reqIdx;
+  saveST();
   showDash(reqIdx);
 }
 
@@ -2371,6 +2716,7 @@ function showDash(reqIdx) {
   document.getElementById('sClass').textContent = cls?.name || '';
   renderChart(req.classKey, req.studentIdx, ST.period);
   renderTeacherNotes(req.classKey, req.studentIdx);
+  renderStudentHomeworks(req.classKey, studentSession?.teacherId || '', req.studentIdx);
 }
 
 function renderTeacherNotes(classKey, studentIdx) {
@@ -2606,8 +2952,323 @@ function renderChart(classKey, studentIdx, period) {
   });
 }
 
+
+// ═══════════════════════════════════════════════════════════════
+// ÖDEV MODÜLÜ
+// ═══════════════════════════════════════════════════════════════
+
+// ST.homeworks = { "classKey:teacherId": [{id, title, dueDate, createdAt, checks:{studentIdx: bool}}] }
+
+function getHwKey() {
+  if (!currentTeacher || !ST.activeClass) return null;
+  return ST.activeClass + ':' + currentTeacher.id;
+}
+
+function getHomeworks(classKey, teacherId) {
+  const key = (classKey || ST.activeClass) + ':' + (teacherId || currentTeacher?.id || '');
+  return (ST.homeworks || {})[key] || [];
+}
+
+function saveHomework(hw, classKey, teacherId) {
+  if (!ST.homeworks) ST.homeworks = {};
+  const key = (classKey || ST.activeClass) + ':' + (teacherId || currentTeacher?.id || '');
+  if (!ST.homeworks[key]) ST.homeworks[key] = [];
+  ST.homeworks[key].push(hw);
+  saveST();
+}
+
+function deleteHomework(hwId, classKey, teacherId) {
+  if (!ST.homeworks) return;
+  const key = (classKey || ST.activeClass) + ':' + (teacherId || currentTeacher?.id || '');
+  ST.homeworks[key] = (ST.homeworks[key] || []).filter(h => h.id !== hwId);
+  saveST();
+}
+
+function toggleHwCheck(hwId, studentIdx, classKey, teacherId) {
+  if (!ST.homeworks) return;
+  const key = (classKey || ST.activeClass) + ':' + (teacherId || currentTeacher?.id || '');
+  const hw = (ST.homeworks[key] || []).find(h => h.id === hwId);
+  if (!hw) return;
+  if (!hw.checks) hw.checks = {};
+  hw.checks[studentIdx] = !hw.checks[studentIdx];
+  saveST();
+}
+
+function hwDueLabel(dueDateStr) {
+  if (!dueDateStr) return '';
+  const due = new Date(dueDateStr);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+  const diff = Math.round((dueDay - today) / 86400000);
+  if (diff < 0) return { label: 'Gecikmiş', cls: 'overdue' };
+  if (diff === 0) return { label: 'Bugün son!', cls: 'today' };
+  if (diff === 1) return { label: 'Yarın son', cls: 'upcoming' };
+  return { label: diff + ' gün kaldı', cls: 'upcoming' };
+}
+
+// ── Öğretmen: Ödev modal aç ──────────────────────────────────
+function openHwModal() {
+  if (!ST.activeClass || !currentTeacher) return;
+  const cls = ST.classes[ST.activeClass];
+  document.getElementById('hwModalTitle').textContent = (cls?.name || '') + ' — Ödevler';
+  renderHwModal();
+  document.getElementById('hwModal').classList.add('open');
+  navPush();
+}
+
+function closeHwModal() {
+  document.getElementById('hwModal').classList.remove('open');
+}
+
+function renderHwModal() {
+  const hws = getHomeworks();
+  const body = document.getElementById('hwModalBody');
+  const today = new Date().toISOString().slice(0,10);
+
+  let parts = [];
+
+  if (hws.length === 0) {
+    parts.push('<div class="hw-empty">📭 Henüz ödev eklenmedi.</div>');
+  } else {
+    hws.slice().reverse().forEach(function(hw) {
+      const due = hwDueLabel(hw.dueDate);
+      const doneCount = Object.values(hw.checks || {}).filter(Boolean).length;
+      const total = (ST.classes[ST.activeClass] && ST.classes[ST.activeClass].students) ? ST.classes[ST.activeClass].students.length : 0;
+      const dueSpan = due ? '<span class="hw-item-due ' + due.cls + '">' + due.label + '</span>' : '';
+      const sonTarih = hw.dueDate ? ' &middot; Son: ' + new Date(hw.dueDate).toLocaleDateString('tr-TR') : '';
+      parts.push(
+        '<div class="hw-item">' +
+          '<div class="hw-item-info">' +
+            '<div class="hw-item-title">' + escHtml(hw.title) + '</div>' +
+            '<div class="hw-item-meta">Eklenme: ' + new Date(hw.createdAt).toLocaleDateString('tr-TR') + sonTarih +
+              ' &middot; ' + doneCount + '/' + total + ' yapıldı</div>' +
+            dueSpan +
+          '</div>' +
+          '<button onclick="deleteHomework(\'' + hw.id + '\');renderHwModal()" ' +
+            'style="background:none;border:1px solid var(--border);color:var(--muted);width:28px;height:28px;' +
+            'border-radius:7px;cursor:pointer;font-size:12px;flex-shrink:0" title="Sil">✕</button>' +
+        '</div>'
+      );
+    });
+  }
+
+  parts.push(
+    '<div class="hw-add-form">' +
+      '<div class="hw-add-title">+ Yeni Ödev</div>' +
+      '<input class="hw-input" id="hwNewTitle" placeholder="Ödev başlığı (örn: Sayfa 45-50 alıştırmalar)" ' +
+        'onkeydown="if(event.key===\'Enter\')addHomework()">' +
+      '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">' +
+        '<label style="font-size:11px;color:var(--muted);flex-shrink:0">Son tarih:</label>' +
+        '<input type="date" class="hw-input" id="hwNewDue" style="margin:0;flex:1" min="' + today + '">' +
+      '</div>' +
+      '<button class="hw-add-btn" onclick="addHomework()">📚 Ödevi Ekle</button>' +
+    '</div>'
+  );
+
+  body.innerHTML = parts.join('');
+  setTimeout(function() { var el = document.getElementById('hwNewTitle'); if(el) el.focus(); }, 100);
+}
+
+function addHomework() {
+  const title = (document.getElementById('hwNewTitle')?.value || '').trim();
+  const due = document.getElementById('hwNewDue')?.value || '';
+  if (!title) { showToast('Ödev başlığı boş olamaz.'); return; }
+  const hw = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+    title,
+    dueDate: due || null,
+    createdAt: new Date().toISOString(),
+    checks: {}
+  };
+  saveHomework(hw);
+  showToast('Ödev eklendi!');
+  renderHwModal();
+}
+
+// ── Notlandırma ekranında ödev listesini göster ──────────────
+function renderGradingHwList(studentIdx) {
+  const hws = getHomeworks();
+  const wrap = document.getElementById('gHwList');
+  const itemsEl = document.getElementById('gHwItems');
+  if (!wrap || !itemsEl) return;
+
+  if (hws.length === 0) { wrap.style.display = 'none'; return; }
+
+  wrap.style.display = 'block';
+  itemsEl.innerHTML = hws.map(function(hw) {
+    var done = !!(hw.checks && hw.checks[studentIdx]);
+    var due = hwDueLabel(hw.dueDate);
+    var dueHtml = due ? '<span style="font-size:10px;color:var(--muted)">' + due.label + '</span>' : '';
+    return '<div class="g-hw-item' + (done ? ' g-hw-done' : '') + '">' +
+      '<button class="g-hw-tick' + (done ? ' ticked' : '') + '" ' +
+        'onclick="toggleHwCheck(\'' + hw.id + '\',' + studentIdx + ');renderGradingHwList(' + studentIdx + ')" ' +
+        'title="Ödev yapıldı mı?">' + (done ? '✓' : '') + '</button>' +
+      '<div class="g-hw-label' + (done ? ' done-label' : '') + '">' + escHtml(hw.title) + '</div>' +
+      dueHtml +
+    '</div>';
+  }).join('');
+}
+
+// ── Öğrenci: Ödevleri göster ────────────────────────────────
+function renderStudentHomeworks(classKey, teacherId, studentIdx) {
+  const hws = getHomeworks(classKey, teacherId);
+  const wrap = document.getElementById('sHwWrap');
+  const list = document.getElementById('sHwList');
+  const count = document.getElementById('sHwCount');
+  if (!wrap || !list) return;
+
+  if (hws.length === 0) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  // ── İstatistikler ──
+  const total = hws.length;
+  const done  = hws.filter(h => h.checks && h.checks[studentIdx]).length;
+  const pct   = total > 0 ? Math.round(done / total * 100) : 0;
+  const active = hws.filter(h => {
+    if (!h.dueDate) return true;
+    return new Date(h.dueDate) >= new Date(new Date().toDateString());
+  });
+
+  // Renk: yeşil ≥80, sarı ≥50, kırmızı <50
+  const barColor = pct >= 80 ? '#2ed573' : pct >= 50 ? '#ffd700' : '#ff6584';
+
+  if (count) count.textContent = active.length + ' aktif';
+
+  // İstatistik kartları + progress bar
+  const statsHtml =
+    '<div class="s-hw-stats">' +
+      '<div class="s-hw-stat">' +
+        '<div class="s-hw-stat-val" style="color:var(--acc)">' + total + '</div>' +
+        '<div class="s-hw-stat-lbl">Toplam</div>' +
+      '</div>' +
+      '<div class="s-hw-stat">' +
+        '<div class="s-hw-stat-val" style="color:#2ed573">' + done + '</div>' +
+        '<div class="s-hw-stat-lbl">Yapılan</div>' +
+      '</div>' +
+      '<div class="s-hw-stat">' +
+        '<div class="s-hw-stat-val" style="color:' + barColor + '">%' + pct + '</div>' +
+        '<div class="s-hw-stat-lbl">Tamamlama</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="s-hw-progress-wrap">' +
+      '<div class="s-hw-progress-bar">' +
+        '<div class="s-hw-progress-fill" style="width:' + pct + '%;background:' + barColor + '"></div>' +
+      '</div>' +
+      '<div class="s-hw-progress-label">' +
+        '<span>' + done + ' yapıldı</span>' +
+        '<span>' + (total - done) + ' kaldı</span>' +
+      '</div>' +
+    '</div>';
+
+  // Ödev listesi (aktif önce, geçmiş sonra)
+  const sorted = [
+    ...active,
+    ...hws.filter(h => h.dueDate && new Date(h.dueDate) < new Date(new Date().toDateString()))
+  ];
+
+  const itemsHtml = sorted.map(function(hw) {
+    const due = hwDueLabel(hw.dueDate);
+    const isDone = !!(hw.checks && hw.checks[studentIdx]);
+    const dotColor = isDone ? '#2ed573' : (due ? (due.cls === 'overdue' ? '#ff6584' : due.cls === 'today' ? '#ffd700' : 'var(--acc)') : 'var(--acc)');
+    return '<div class="s-hw-item" style="' + (isDone ? 'opacity:.6' : '') + '">' +
+      '<div class="s-hw-dot" style="background:' + dotColor + ';margin-top:5px">' +
+        (isDone ? '<span style="font-size:7px;color:#0a0a0f;font-weight:800;line-height:8px">✓</span>' : '') +
+      '</div>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div class="s-hw-item-title" style="' + (isDone ? 'text-decoration:line-through' : '') + '">' + escHtml(hw.title) + '</div>' +
+        '<div class="s-hw-item-meta">' +
+          (hw.dueDate ? 'Son: ' + new Date(hw.dueDate).toLocaleDateString('tr-TR') : 'Tarih yok') +
+          (due && !isDone ? ' · <span style="color:' + (due.cls==='overdue'?'#ff6584':due.cls==='today'?'#ffd700':'#a09fff') + '">' + due.label + '</span>' : '') +
+          (isDone ? ' · <span style="color:#2ed573">Yapıldı ✓</span>' : '') +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  list.innerHTML = statsHtml + itemsHtml;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// SINIF SEÇİM SİSTEMİ
+// ═══════════════════════════════════════════════════════════════
+
+function getMyClasses() {
+  if (!currentTeacher) return [];
+  const myKeys = (ST.teacherClasses || {})[currentTeacher.id];
+  if (!myKeys) return null; // null = henüz seçim yapılmamış
+  return myKeys;
+}
+
+function setMyClasses(keys) {
+  if (!ST.teacherClasses) ST.teacherClasses = {};
+  ST.teacherClasses[currentTeacher.id] = keys;
+  saveST();
+}
+
+function openClassSelectModal() {
+  const allKeys = Object.keys(ST.classes);
+  if (allKeys.length === 0) return; // Sınıf yoksa modal açma
+  
+  const myKeys = getMyClasses() || [];
+  const list = document.getElementById('classSelectList');
+  
+  list.innerHTML = allKeys.map(k => {
+    const cls = ST.classes[k];
+    const sel = myKeys.includes(k);
+    return '<div class="cls-select-item ' + (sel ? 'selected' : '') + '" ' +
+      'onclick="toggleClassSelect(this,\'' + k + '\')" data-key="' + k + '">' +
+      '<div class="cls-select-check">' + (sel ? '✓' : '') + '</div>' +
+      '<div>' +
+        '<div class="cls-select-name">' + cls.name + '</div>' +
+        '<div class="cls-select-sub">' + cls.students.length + ' öğrenci</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  document.getElementById('classSelectModal').classList.add('open');
+  navPush();
+}
+
+function toggleClassSelect(el, key) {
+  el.classList.toggle('selected');
+  const check = el.querySelector('.cls-select-check');
+  check.textContent = el.classList.contains('selected') ? '✓' : '';
+}
+
+function saveClassSelection() {
+  const selected = Array.from(
+    document.querySelectorAll('#classSelectList .cls-select-item.selected')
+  ).map(el => el.dataset.key);
+  
+  setMyClasses(selected);
+  document.getElementById('classSelectModal').classList.remove('open');
+  renderTeacher();
+  if (selected.length > 0) {
+    showToast(selected.length + ' sınıf seçildi');
+  }
+}
+
+// Öğretmen girişi sonrası sınıf seçimini kontrol et
+function checkAndShowClassSelect() {
+  const allKeys = Object.keys(ST.classes);
+  if (allKeys.length === 0) return; // PDF henüz yüklenmemiş
+  const myKeys = getMyClasses();
+  if (myKeys === null) {
+    // İlk giriş — sınıf seçim ekranını göster
+    setTimeout(() => openClassSelectModal(), 400);
+  }
+}
+
 function studentLogout() {
   ST.loggedIn = null;
+  ST.studentSession = null;
+  studentSession = null;
   saveST();
   goto('home');
 }
@@ -2622,6 +3283,33 @@ function showLoading(txt) {
 }
 function setLoadProg(txt) { document.getElementById('loadProg').textContent = txt; }
 function hideLoading() { document.getElementById('loadingOverlay').classList.remove('show'); }
+
+// ── UYGULAMA BAŞLANGIÇ: kayıtlı oturumu geri yükle ──────────────
+// Tüm modal ve overlay'leri başlangıçta zorla kapat
+['gradeModal','teacherModal','adminPanelModal','hwModal','classSelectModal','gradingScreen','loadingOverlay'].forEach(function(id){
+  var el = document.getElementById(id);
+  if(el){ el.style.display='none'; el.classList.remove('open'); }
+});
+
+(function autoRestoreSession() {
+  // Öğretmen oturumu
+  if (ST.savedTeacher) {
+    currentTeacher = ST.savedTeacher;
+    document.getElementById('btnAdmin').style.display = currentTeacher.isAdmin ? '' : 'none';
+    const sbName = document.getElementById('sbTeacherName');
+    const sbBranch = document.getElementById('sbTeacherBranch');
+    if (sbName) sbName.textContent = currentTeacher.name;
+    if (sbBranch) sbBranch.textContent = currentTeacher.branch + ' · ' + (currentTeacher.schoolName || '');
+    loadTeacherData();
+    goto('teacher', false);
+    return;
+  }
+  // Öğrenci oturumu
+  if (ST.loggedIn !== null && ST.loggedIn !== undefined) {
+    goto('student', false);
+    return;
+  }
+})();
 
 // Drag & drop on upload zone
 document.addEventListener('dragover', e => e.preventDefault());
