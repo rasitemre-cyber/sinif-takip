@@ -455,90 +455,109 @@ if ('serviceWorker' in navigator) {
 const SUPABASE_URL = 'https://fmijczpyjezqqwjkpgrf.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZtaWpjenB5amV6cXF3amtwZ3JmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NTQyOTIsImV4cCI6MjA4NzQzMDI5Mn0.NyBMy9kzIyGuk7DKYM2wfxCWy7x0PMvrH_wy7UBHMRQ';
 
-// Önizleme ortamında (iframe/Claude) Supabase yerine localStorage mock kullan
-const IS_PREVIEW = window.self !== window.top || window.location.hostname === 'localhost' || window.location.protocol === 'blob:';
-
-let sb;
-if (IS_PREVIEW) {
-  // Mock Supabase - localStorage ile çalışır, önizlemede hatasız
-  const mockDB = {};
-  const getTable = (t) => JSON.parse(localStorage.getItem('mock_'+t) || '[]');
-  const saveTable = (t, d) => localStorage.setItem('mock_'+t, JSON.stringify(d));
-  
-  const ciEq = (a, b) => typeof a === 'string' && typeof b === 'string' 
+// ── Mock Supabase (localStorage tabanlı, her ortamda çalışır) ──────────────
+function makeMock() {
+  const getTable = (t) => { try { return JSON.parse(localStorage.getItem('mock_'+t) || '[]'); } catch(e){ return []; } };
+  const saveTable = (t, d) => { try { localStorage.setItem('mock_'+t, JSON.stringify(d)); } catch(e){} };
+  const ciEq = (a, b) => typeof a === 'string' && typeof b === 'string'
     ? a.toLocaleLowerCase('tr-TR').trim() === b.toLocaleLowerCase('tr-TR').trim() : a == b;
-  
-  sb = {
+
+  const makeSelect = (table) => {
+    let filters = [];
+    const resolve = () => {
+      let rows = getTable(table);
+      filters.forEach(f => { rows = rows.filter(r => ciEq(r[f.col], f.val)); });
+      return rows;
+    };
+    const chain = {
+      eq:     (col, val) => { filters.push({col, val}); return chain; },
+      single: async ()   => ({ data: resolve()[0] || null, error: null }),
+      order:  ()         => chain,
+      then:   async (fn) => fn({ data: resolve(), error: null }),
+      catch:  ()         => Promise.resolve({ data: resolve(), error: null }),
+    };
+    return chain;
+  };
+
+  const makeInsert = (table, rowOrRows) => {
+    let inserted = false;
+    const doInsert = () => {
+      if (inserted) return; inserted = true;
+      const rows = getTable(table);
+      const items = Array.isArray(rowOrRows) ? rowOrRows : [rowOrRows];
+      items.forEach(row => {
+        rows.push({ ...row, id: Date.now().toString(36) + Math.random().toString(36).slice(2), created_at: new Date().toISOString() });
+      });
+      saveTable(table, rows);
+    };
+    const chain = {
+      select: () => ({ single: async () => { doInsert(); return { data: getTable(table).slice(-1)[0], error: null }; } }),
+      then:   async (fn) => { doInsert(); return fn({ data: null, error: null }); },
+      catch:  ()         => Promise.resolve({ data: null, error: null }),
+    };
+    return chain;
+  };
+
+  return {
     from: (table) => ({
-      select: (cols) => {
-        let filters = [];
-        const chain = {
-          eq: (col, val) => { filters.push({col, val}); return chain; },
-          single: async () => {
-            let rows = getTable(table);
-            filters.forEach(f => { rows = rows.filter(r => ciEq(r[f.col], f.val)); });
-            return { data: rows[0] || null, error: null };
-          },
-          order: async (c) => {
-            let rows = getTable(table);
-            filters.forEach(f => { rows = rows.filter(r => ciEq(r[f.col], f.val)); });
-            return { data: rows, error: null };
-          },
-          then: async (fn) => {
-            let rows = getTable(table);
-            filters.forEach(f => { rows = rows.filter(r => ciEq(r[f.col], f.val)); });
-            return fn({ data: rows, error: null });
-          }
-        };
-        return chain;
-      },
-      insert: (row) => ({
-        select: () => ({ single: async () => {
-          const rows = getTable(table);
-          const newRow = { ...row, id: Date.now().toString(), created_at: new Date().toISOString() };
-          rows.push(newRow);
-          saveTable(table, rows);
-          return { data: newRow, error: null };
-        }}),
-        then: async (fn) => {
-          const rows = getTable(table);
-          const newRow = { ...row, id: Date.now().toString(), created_at: new Date().toISOString() };
-          rows.push(newRow);
-          saveTable(table, rows);
-          return fn({ data: newRow, error: null });
-        },
-        catch: async () => ({ data: null, error: null })
-      }),
-      upsert: async (row) => {
+      select:  ()        => makeSelect(table),
+      insert:  (rows)    => makeInsert(table, rows),
+      upsert:  async (row) => {
         const rows = getTable(table).filter(r => r.id !== row.id);
         rows.push({ ...row, created_at: new Date().toISOString() });
         saveTable(table, rows);
         return { data: row, error: null };
       },
       update: (updates) => ({
-        eq: async (col, val) => {
-          const rows = getTable(table).map(r => ciEq(r[col], val) ? {...r, ...updates} : r);
-          saveTable(table, rows);
+        eq: (col, val) => ({
+          eq: async (c2, v2) => {
+            saveTable(table, getTable(table).map(r => ciEq(r[col],val) && ciEq(r[c2],v2) ? {...r,...updates} : r));
+            return { data: null, error: null };
+          },
+          then: async (fn) => {
+            saveTable(table, getTable(table).map(r => ciEq(r[col],val) ? {...r,...updates} : r));
+            return fn({ data: null, error: null });
+          }
+        })
+      }),
+      delete: () => ({
+        eq: (col, val) => {
+          saveTable(table, getTable(table).filter(r => !ciEq(r[col], val)));
           return { data: null, error: null };
         }
       }),
     })
   };
-  console.log('🔧 Önizleme modu: localStorage mock aktif');
+}
+
+// ── Supabase veya Mock seç ──────────────────────────────────────────────────
+const _forceLocal = window.self !== window.top
+  || ['localhost','127.0.0.1'].includes(window.location.hostname)
+  || ['blob:','file:'].includes(window.location.protocol);
+
+let sb;
+if (_forceLocal) {
+  sb = makeMock();
+  console.log('🔧 Mock mod aktif (localStorage)');
 } else {
-  sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-      storage: {
-        getItem: () => null,
-        setItem: () => {},
-        removeItem: () => {}
+  try {
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession:false, autoRefreshToken:false, detectSessionInUrl:false,
+        storage: { getItem:()=>null, setItem:()=>{}, removeItem:()=>{} } }
+    });
+    // Bağlantıyı test et — başarısız olursa mock'a düş
+    sb.from('teachers').select('id').limit(1).then(res => {
+      if (res?.error?.message?.includes('fetch') || res?.error?.message?.includes('Load')) {
+        console.warn('⚠️ Supabase erişilemiyor, mock moda geçildi');
+        sb = makeMock();
+      } else {
+        console.log('🚀 Supabase aktif');
       }
-    }
-  });
-  console.log('🚀 Canlı mod: Supabase aktif');
+    }).catch(() => { sb = makeMock(); console.warn('⚠️ Supabase bağlantı hatası, mock mod'); });
+  } catch(e) {
+    sb = makeMock();
+    console.warn('⚠️ Supabase başlatılamadı, mock mod:', e);
+  }
 }
 
 </script>
@@ -675,8 +694,8 @@ if (!localStorage.getItem('_reset_v8')) {
   <div id="sLoginWrap" class="s-login">
     <div class="s-card">
       <div>
-        <div class="s-title">Giriş Yap</div>
-        <div class="s-sub">Bilgilerinizi girin</div>
+        <div class="s-title">🎒 Öğrenci Girişi</div>
+        <div class="s-sub">İlk girişte belirlediğiniz şifre kalıcı olarak kaydedilir.</div>
       </div>
       <div>
         <label class="f-label">Ad Soyad</label>
@@ -684,19 +703,19 @@ if (!localStorage.getItem('_reset_v8')) {
       </div>
       <div>
         <label class="f-label">Öğrenci Numarası</label>
-        <input class="f-input" id="sNum" placeholder="örn: 8">
+        <input class="f-input" id="sNum" placeholder="örn: 8" inputmode="numeric">
       </div>
       <div>
         <label class="f-label">Kurum Kodu</label>
         <input class="f-input" id="sKurum" placeholder="örn: 123456">
       </div>
       <div>
-        <label class="f-label">Okul Adı</label>
+        <label class="f-label">Okul Adı <span style="color:var(--muted);font-weight:400;font-size:10px">(isteğe bağlı)</span></label>
         <input class="f-input" id="sSchool" placeholder="örn: Atatürk Ortaokulu">
       </div>
       <div>
-        <label class="f-label">Şifre</label>
-        <input class="f-input" id="sPass" type="password" placeholder="Şifre"
+        <label class="f-label">Şifre <span style="color:var(--muted);font-weight:400;font-size:10px">(ilk girişte belirlenir)</span></label>
+        <input class="f-input" id="sPass" type="password" placeholder="Şifrenizi girin"
           onkeydown="if(event.key==='Enter')studentLogin()">
       </div>
       <button class="s-login-btn" onclick="studentLogin()">Giriş Yap →</button>
@@ -941,12 +960,17 @@ function renderAdminRequests() {
   }
   el.innerHTML = pending.map(r => {
     const origIdx = ST.requests.indexOf(r);
-    // Otomatik eşleşme bul (isim ve numara)
+    // Otomatik eşleşme: numara kesin eşleşmeli, isimde bir kelime yeterlİ
     let autoMatch = null;
     for (const [k, cls] of Object.entries(ST.classes)) {
-      const si = cls.students.findIndex(s =>
-        normName(s.name) === normName(r.name) && String(s.number) === String(r.number)
-      );
+      const si = cls.students.findIndex(s => {
+        // Numara kesin eşleşmeli
+        if (String(s.number) !== String(r.number)) return false;
+        // İsim: PDF'deki ismin herhangi bir kelimesi, request'teki ismin herhangi bir kelimesiyle eşleşsin
+        const pdfWords = s.name.toLocaleLowerCase('tr-TR').split(/\s+/);
+        const reqWords = r.name.toLocaleLowerCase('tr-TR').split(/\s+/).filter(w => w.length > 1);
+        return reqWords.some(rw => pdfWords.some(pw => pw === rw));
+      });
       if (si >= 0) { autoMatch = { classKey: k, studentIdx: si, className: cls.name, studentName: cls.students[si].name }; break; }
     }
     let matchHtml = '';
@@ -1128,41 +1152,53 @@ async function teacherRegister() {
   if (pass !== pass2) return tMsg('Şifreler eşleşmiyor.', 'err');
   const name = normName(rawName);
 
-  const { data: exists } = await sb.from('teachers').select('id').eq('full_name', name).eq('kurum_kodu', kurumKodu).single();
-  if (exists) return tMsg('Bu isim ve kurum koduyla zaten bir kayıt var.', 'err');
-
-  // İlk öğretmen kontrolü - tüm öğretmenleri çek
-  let isFirst = false;
   try {
-    const result = await sb.from('teachers').select('id').eq('kurum_kodu', kurumKodu).order('created_at');
-    console.log('Kurum kontrol:', result.data);
-    isFirst = !result.data || result.data.length === 0;
-  } catch(e) { console.log('Kurum kontrol hata:', e); isFirst = true; }
-
-  console.log('isFirst:', isFirst);
-
-  const insertData = {
-    full_name: name, branch, kurum_kodu: kurumKodu, school_name: schoolName,
-    pass_hash: btoa(pass), status: isFirst ? 'approved' : 'pending'
-  };
-  if (isFirst) insertData.is_admin = true;
-  
-  const { error } = await sb.from('teachers').insert(insertData);
-  if (error) return tMsg('Hata: ' + error.message, 'err');
-
-  // is_admin ayrı update (Supabase insert hatası olursa)
-  if (isFirst) {
+    // Mevcut kayıt kontrolü
+    const { data: exists } = await sb.from('teachers').select('id').eq('full_name', name).eq('kurum_kodu', kurumKodu).single();
+    if (exists) return tMsg('Bu isim ve kurum koduyla zaten bir kayıt var.', 'err');
+    // İlk öğretmen kontrolü
+    let isFirst = false;
     try {
-      const { data: newT } = await sb.from('teachers').select('id').eq('full_name', name).eq('kurum_kodu', kurumKodu).single();
-      if (newT) await sb.from('teachers').update({ is_admin: true }).eq('id', newT.id);
-    } catch(e) { console.log('Admin update hata:', e); }
-  }
+      const result = await sb.from('teachers').select('id').eq('kurum_kodu', kurumKodu).order('created_at');
+      const existing = result?.data || [];
+      isFirst = existing.length === 0;
+    } catch(e) { isFirst = true; }
 
-  if (isFirst) {
-    closeTeacherAuth();
-    showAdminWelcome(name, schoolName, kurumKodu, pass);
-  } else {
-    tMsg('Kayıt başarılı! Yönetici onayından sonra giriş yapabilirsiniz.', 'ok');
+    const insertData = {
+      full_name: name, branch, kurum_kodu: kurumKodu, school_name: schoolName,
+      pass_hash: btoa(unescape(encodeURIComponent(pass))),
+      status: isFirst ? 'approved' : 'pending',
+      is_admin: isFirst ? true : false
+    };
+
+    const insertResult = await sb.from('teachers').insert(insertData);
+    const insertError = insertResult?.error;
+    if (insertError) return tMsg('Kayıt hatası: ' + (insertError.message || JSON.stringify(insertError)), 'err');
+
+    // is_admin ayrı update (bazı Supabase konfigürasyonlarında gerekli)
+    if (isFirst) {
+      try {
+        const { data: newT } = await sb.from('teachers').select('id').eq('full_name', name).eq('kurum_kodu', kurumKodu).single();
+        if (newT?.id) await sb.from('teachers').update({ is_admin: true }).eq('id', newT.id);
+      } catch(e) { /* önemli değil, insertData'da zaten set ettik */ }
+    }
+
+    if (isFirst) {
+      closeTeacherAuth();
+      showAdminWelcome(name, schoolName, kurumKodu, pass);
+    } else {
+      tMsg('Kayıt başarılı! Yönetici onayından sonra giriş yapabilirsiniz.', 'ok');
+    }
+  } catch(e) {
+    console.error('teacherRegister hata:', e);
+    // Network hatası ise mock'a geç ve tekrar dene
+    if (e.message && (e.message.includes('Load failed') || e.message.includes('fetch') || e.message.includes('network'))) {
+      console.warn('Supabase erişilemiyor, mock moda geçiliyor...');
+      sb = makeMock();
+      tMsg('Çevrimdışı mod aktif, lütfen tekrar deneyin.', 'warn');
+    } else {
+      tMsg('Hata: ' + (e.message || e), 'err');
+    }
   }
 }
 
@@ -1202,15 +1238,18 @@ async function teacherLogin() {
   if (!rawName || !kurumKodu || !pass) return tMsg('Tüm alanlar zorunlu.', 'err');
   const name = normName(rawName);
 
-  const { data: teacher } = await sb.from('teachers').select('*').eq('full_name', name).eq('kurum_kodu', kurumKodu).single();
-  if (!teacher) return tMsg('Kayıtlı öğretmen bulunamadı.', 'err');
-  if (btoa(pass) !== teacher.pass_hash) return tMsg('Şifre hatalı.', 'err');
-  if (teacher.status === 'pending') return tMsg('Hesabınız henüz onaylanmadı.', 'warn');
-  if (teacher.status === 'rejected') return tMsg('Hesabınız askıya alındı.', 'err');
+  try {
+    const { data: teacher } = await sb.from('teachers').select('*').eq('full_name', name).eq('kurum_kodu', kurumKodu).single();
+    if (!teacher) return tMsg('Kayıtlı öğretmen bulunamadı.', 'err');
 
-  const isAdmin = teacher.is_admin === true || teacher.is_admin === 'true';
-  currentTeacher = { id: teacher.id, name: teacher.full_name, branch: teacher.branch,
-    kurumKodu: teacher.kurum_kodu, schoolName: teacher.school_name, isAdmin };
+    const passEncoded = btoa(unescape(encodeURIComponent(pass)));
+    if (passEncoded !== teacher.pass_hash) return tMsg('Şifre hatalı.', 'err');
+    if (teacher.status === 'pending') return tMsg('Hesabınız henüz onaylanmadı.', 'warn');
+    if (teacher.status === 'rejected') return tMsg('Hesabınız askıya alındı.', 'err');
+
+    const isAdmin = teacher.is_admin === true || teacher.is_admin === 'true';
+    currentTeacher = { id: teacher.id, name: teacher.full_name, branch: teacher.branch,
+      kurumKodu: teacher.kurum_kodu, schoolName: teacher.school_name, isAdmin };
 
   closeTeacherAuth();
   document.getElementById('sbTeacherName').textContent = teacher.full_name;
@@ -1229,6 +1268,15 @@ async function teacherLogin() {
       document.body.appendChild(toast);
       setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity .5s'; setTimeout(() => toast.remove(), 500); }, 4500);
     }, 500);
+  }
+  } catch(e) {
+    console.error('teacherLogin hata:', e);
+    if (e.message && (e.message.includes('Load failed') || e.message.includes('fetch') || e.message.includes('network'))) {
+      sb = makeMock();
+      tMsg('Çevrimdışı mod aktif, lütfen tekrar deneyin.', 'warn');
+    } else {
+      tMsg('Bağlantı hatası: ' + (e.message || e), 'err');
+    }
   }
 }
 
@@ -2199,45 +2247,63 @@ function renderStudentPage() {
   document.getElementById('sSubjectWrap').style.display = 'none';
   document.getElementById('sDash').style.display = 'none';
   document.getElementById('sMsg').style.display = 'none';
-  document.getElementById('sName').value = '';
+  const sNameEl = document.getElementById('sName'); if(sNameEl) sNameEl.value = '';
   document.getElementById('sNum').value = '';
   document.getElementById('sKurum').value = '';
-  document.getElementById('sSchool').value = '';
+  const sSchoolEl = document.getElementById('sSchool'); if(sSchoolEl) sSchoolEl.value = '';
   document.getElementById('sPass').value = '';
 }
 
 function studentLogin() {
-  const name = document.getElementById('sName').value.trim();
+  const nameEl = document.getElementById('sName');
+  const name = (nameEl ? nameEl.value.trim() : '');
   const num = document.getElementById('sNum').value.trim();
   const kurum = document.getElementById('sKurum').value.trim();
-  const school = document.getElementById('sSchool').value.trim();
+  const schoolEl = document.getElementById('sSchool');
+  const school = schoolEl ? schoolEl.value.trim() : '';
   const pass = document.getElementById('sPass').value;
-  if (!name || !num || !kurum || !school || !pass) return showMsg('Tüm alanlar zorunludur.', 'err');
+
+  if (!num || !kurum || !pass) return showMsg('Numara, kurum kodu ve şifre zorunludur.', 'err');
   if (pass.length < 4) return showMsg('Şifre en az 4 karakter olmalı.', 'err');
 
-  const norm = s => s.toLowerCase().replace(/\s+/g, ' ').trim();
+  const norm = s => s.toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim();
 
-  // Check existing request (matched or pending)
+  // Önce numara + kurum kodu ile kayıt ara — isim ve okul adına takılma
   const existingIdx = ST.requests.findIndex(r =>
-    norm(r.name) === norm(name) && r.number === num && r.kurumKodu === kurum
+    String(r.number) === String(num) && r.kurumKodu === kurum
   );
 
   if (existingIdx >= 0) {
     const req = ST.requests[existingIdx];
     // Şifre kontrolü
-    if (req.passHash && btoa(pass) !== req.passHash) return showMsg('Şifre hatalı.', 'err');
+    if (req.passHash && btoa(unescape(encodeURIComponent(pass))) !== req.passHash) return showMsg('Şifre hatalı.', 'err');
+    // İsim girilmişse kayıtta sakla (güncellenmiş olabilir)
+    if (name) req.name = name;
+    if (school) req.schoolName = school;
+    saveST();
 
     if (req.classKey && req.studentIdx !== null && req.studentIdx !== undefined) {
       ST.loggedIn = existingIdx;
       saveST();
-      showSubjectSelect(existingIdx, school);
+      showSubjectSelect(existingIdx, school || req.schoolName || '');
       return;
     }
     return showMsg('İsteğiniz öğretmen onayı bekliyor.', 'warn');
   }
 
-  // New request with password
-  ST.requests.push({ name, number: num, kurumKodu: kurum, schoolName: school, passHash: btoa(pass), ts: Date.now(), classKey: null, studentIdx: null });
+  // Yeni kayıt — isim zorunlu (ilk kayıtta)
+  if (!name) return showMsg('İlk kayıt için lütfen adınızı ve soyadınızı girin.', 'err');
+
+  ST.requests.push({
+    name,
+    number: num,
+    kurumKodu: kurum,
+    schoolName: school,
+    passHash: btoa(unescape(encodeURIComponent(pass))),
+    ts: Date.now(),
+    classKey: null,
+    studentIdx: null
+  });
   saveST();
   showMsg('Kayıt başarılı! Öğretmen eşleştirmesinden sonra tekrar giriş yapın.', 'warn');
 }
