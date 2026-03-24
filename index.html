@@ -1129,12 +1129,12 @@ async function openAdminPanel() {
   document.getElementById('adminSubTitle').textContent =
     `${currentTeacher.schoolName || 'Okul'} · Kurum: ${currentTeacher.kurumKodu}`;
   await renderAdminTeachers();
-  document.getElementById('adminPanelModal').classList.add('open');
+  var apEl = document.getElementById('adminPanelModal'); apEl.style.display='flex'; apEl.classList.add('open');
   navPush();
 }
 
 function closeAdminPanel() {
-  document.getElementById('adminPanelModal').classList.remove('open');
+  var apCl = document.getElementById('adminPanelModal'); apCl.classList.remove('open'); apCl.style.display='none';
 }
 
 function switchAdminTab(tab) {
@@ -1310,11 +1310,11 @@ async function adminResetPw(btn) {
 // ── TEACHER AUTH ─────────────────────────────────────────────────
 function openTeacherAuth() {
   renderTeacherModal('login');
-  document.getElementById('teacherModal').classList.add('open');
+  var tmEl = document.getElementById('teacherModal'); tmEl.style.display='flex'; tmEl.classList.add('open');
 }
 
 function closeTeacherAuth() {
-  document.getElementById('teacherModal').classList.remove('open');
+  var tmCl = document.getElementById('teacherModal'); tmCl.classList.remove('open'); tmCl.style.display='none';
 }
 
 function renderTeacherModal(mode) {
@@ -1628,32 +1628,47 @@ function updateLastPdfBtn() {
 }
 
 function loadTeacherData() {
-  // Clear current classes and load this teacher's saved data
   ST.classes = {};
   ST.activeClass = null;
   ST.schoolName = '';
-  
-  const key = getTeacherPdfKey();
-  if (!key) return;
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return;
-    const data = JSON.parse(raw);
-    
-    let photos = {};
-    try { photos = JSON.parse(localStorage.getItem(key + '_photos') || '{}'); } catch(e) {}
 
-    for (const [k, cls] of Object.entries(data.classes)) {
+  if (!currentTeacher) return;
+
+  // Önce öğretmene özel key'i dene, bulamazsa eski kurum key'ini dene (geri uyumluluk)
+  const keys_to_try = [
+    getTeacherPdfKey(),           // teacherPdf_<id>
+    getKurumPdfKey(),             // kurumPdf_<kurum>
+    'kurumPdf_' + (currentTeacher.kurumKodu || '')
+  ].filter(Boolean);
+
+  let raw = null, usedKey = null;
+  for (const k of keys_to_try) {
+    raw = localStorage.getItem(k);
+    if (raw) { usedKey = k; break; }
+  }
+  if (!raw) return;
+
+  try {
+    const data = JSON.parse(raw);
+    let photos = {};
+    try { photos = JSON.parse(localStorage.getItem(usedKey + '_photos') || '{}'); } catch(e) {}
+
+    for (const [k, cls] of Object.entries(data.classes || {})) {
       ST.classes[k] = {
         name: cls.name,
         school: cls.school,
-        students: cls.students.map((s, si) => ({ name: s.name, number: s.number, photoData: (photos[k+'_'+si] || null) }))
+        students: (cls.students || []).map((s, si) => ({
+          name: s.name, number: s.number,
+          photoData: photos[k+'_'+si] || null
+        }))
       };
     }
     if (data.schoolName) ST.schoolName = data.schoolName;
-    
-    const keys = Object.keys(ST.classes);
     ST.activeClass = null;
+    // Eğer eski key kullandıysak, yeni key'e de kopyala
+    if (usedKey !== getTeacherPdfKey()) {
+      try { localStorage.setItem(getTeacherPdfKey(), raw); localStorage.setItem(getTeacherPdfKey()+'_photos', localStorage.getItem(usedKey+'_photos')||'{}'); } catch(e) {}
+    }
     saveST();
   } catch(e) { console.warn('Öğretmen verisi yükleme hatası:', e); }
 }
@@ -1851,22 +1866,20 @@ function restoreOrResetStudentPage() {
 }
 
 // ── GERİ TUŞU SİSTEMİ ──
+// Her zaman aynı URL'yi kullan - file:// protokolünde güvenli
+var _appBase = location.href.split('#')[0];
 function navPush() {
-  history.pushState({ app: true }, '', location.href.split('#')[0]);
-}
-function navReplace() {
-  history.replaceState({ app: true }, '', location.href.split('#')[0]);
+  history.pushState({ app: true, t: Date.now() }, '', _appBase);
 }
 
-// Başlangıçta stack'e 3 entry koy — tarayıcı asla geri gidemez
-history.replaceState({ app: true }, '', '');
-navPush();
-navPush();
+// Başlangıçta stack'e 5 entry koy — ardarda 5 geri basılsa bile çıkılmaz
+history.replaceState({ app: true, t: 0 }, '', _appBase);
+navPush(); navPush(); navPush(); navPush();
 
 // Hangi katmandayız tespit et
 function getCurrentLayer() {
   const gs = document.getElementById('gradingScreen');
-  if (gs && gs.classList.contains('open')) return 'grading';
+  if (gs && (gs.classList.contains('open') || gs.style.display === 'flex')) return 'grading';
   const gm = document.getElementById('gradeModal');
   if (gm && gm.querySelector('.gm-modal') && gm.style.display !== 'none') return 'gradeModal';
   const ap = document.getElementById('adminPanelModal');
@@ -1885,8 +1898,9 @@ window.addEventListener('popstate', function(e) {
 
   switch(layer) {
     case 'grading':
-      document.getElementById('gradingScreen').style.display = 'none';
-      document.getElementById('gradingScreen').classList.remove('open');
+      var gsBack = document.getElementById('gradingScreen');
+      gsBack.classList.remove('open');
+      gsBack.style.display = 'none';
       break;
     case 'gradeModal':
       closeGradeModal();
@@ -2312,7 +2326,9 @@ function startGrading() {
   if (!ST.activeClass) return;
   gradIdx = 0;
   document.getElementById('gTot').textContent = ST.classes[ST.activeClass].students.length;
-  document.getElementById('gradingScreen').classList.add('open');
+  var gs = document.getElementById('gradingScreen');
+  gs.style.display = 'flex';
+  gs.classList.add('open');
   document.getElementById('gNext').style.display = '';
   navPush();
   showGrading();
@@ -2440,11 +2456,11 @@ function openGradeModal(classKey, studentIdx) {
   document.getElementById('gmSub').textContent = `#${s.number} · ${cls.name}`;
 
   renderGradeList();
-  document.getElementById('gradeModal').classList.add('open');
+  var gmEl = document.getElementById('gradeModal'); gmEl.style.display='flex'; gmEl.classList.add('open');
 }
 
 function closeGradeModal() {
-  document.getElementById('gradeModal').classList.remove('open');
+  var gmCl = document.getElementById('gradeModal'); gmCl.classList.remove('open'); gmCl.style.display='none';
   gmClassKey = null; gmStudentIdx = null; gmEditingIdx = null;
 }
 
@@ -3030,12 +3046,12 @@ function openHwModal() {
   const cls = ST.classes[ST.activeClass];
   document.getElementById('hwModalTitle').textContent = (cls?.name || '') + ' — Ödevler';
   renderHwModal();
-  document.getElementById('hwModal').classList.add('open');
+  var hwEl = document.getElementById('hwModal'); hwEl.style.display='flex'; hwEl.classList.add('open');
   navPush();
 }
 
 function closeHwModal() {
-  document.getElementById('hwModal').classList.remove('open');
+  var hwCl = document.getElementById('hwModal'); hwCl.classList.remove('open'); hwCl.style.display='none';
 }
 
 function renderHwModal() {
@@ -3248,7 +3264,7 @@ function openClassSelectModal() {
     '</div>';
   }).join('');
 
-  document.getElementById('classSelectModal').classList.add('open');
+  var csEl = document.getElementById('classSelectModal'); csEl.style.display='flex'; csEl.classList.add('open');
   navPush();
 }
 
@@ -3264,7 +3280,7 @@ function saveClassSelection() {
   ).map(el => el.dataset.key);
   
   setMyClasses(selected);
-  document.getElementById('classSelectModal').classList.remove('open');
+  var csCl = document.getElementById('classSelectModal'); csCl.classList.remove('open'); csCl.style.display='none';
   renderTeacher();
   if (selected.length > 0) {
     showToast(selected.length + ' sınıf seçildi');
