@@ -1646,54 +1646,63 @@ function updateLastPdfBtn() {
 
 function loadTeacherData() {
   if (!currentTeacher) return;
-
-  // Önce öğretmene özel key'i dene, bulamazsa eski kurum key'lerini dene
-  const keys_to_try = [
-    getTeacherPdfKey(),
-    getKurumPdfKey(),
-    'kurumPdf_' + (currentTeacher.kurumKodu || ''),
-    localStorage.getItem('_lastPdfKey')
-  ].filter(Boolean);
-
-  let raw = null, usedKey = null;
-  for (const k of keys_to_try) {
-    raw = localStorage.getItem(k);
-    if (raw) { usedKey = k; break; }
-  }
-
-  // PDF verisi yoksa mevcut ST.classes'ı koru (classMeta'dan zaten yüklenmiş)
-  if (!raw) {
-    console.log('PDF verisi bulunamadı, mevcut sınıflar korunuyor. Keys denendi:', keys_to_try);
-    return;
-  }
-
-  ST.classes = {};
-  ST.activeClass = null;
-  ST.schoolName = ''
-
-  try {
-    const data = JSON.parse(raw);
-    let photos = {};
-    try { photos = JSON.parse(localStorage.getItem(usedKey + '_photos') || '{}'); } catch(e) {}
-
-    for (const [k, cls] of Object.entries(data.classes || {})) {
-      ST.classes[k] = {
-        name: cls.name,
-        school: cls.school,
-        students: (cls.students || []).map((s, si) => ({
-          name: s.name, number: s.number,
-          photoData: photos[k+'_'+si] || null
-        }))
-      };
+  // ST.classes zaten loadST() tarafından classMeta'dan yüklendi.
+  // Burada sadece fotoğrafları ekle — sınıfları silme!
+  if (Object.keys(ST.classes).length === 0) {
+    // Sınıf yok — PDF key'lerinden yüklemeyi dene
+    var keys_to_try = [
+      getTeacherPdfKey(),
+      getKurumPdfKey(),
+      'kurumPdf_' + (currentTeacher.kurumKodu || ''),
+      localStorage.getItem('_lastPdfKey')
+    ].filter(Boolean);
+    var raw = null, usedKey = null;
+    for (var i = 0; i < keys_to_try.length; i++) {
+      raw = localStorage.getItem(keys_to_try[i]);
+      if (raw) { usedKey = keys_to_try[i]; break; }
     }
-    if (data.schoolName) ST.schoolName = data.schoolName;
-    ST.activeClass = null;
-    // Eğer eski key kullandıysak, yeni key'e de kopyala
-    if (usedKey !== getTeacherPdfKey()) {
-      try { localStorage.setItem(getTeacherPdfKey(), raw); localStorage.setItem(getTeacherPdfKey()+'_photos', localStorage.getItem(usedKey+'_photos')||'{}'); } catch(e) {}
+    if (raw) {
+      try {
+        var data = JSON.parse(raw);
+        var photos = {};
+        try { photos = JSON.parse(localStorage.getItem(usedKey + '_photos') || '{}'); } catch(e2) {}
+        for (var k in data.classes) {
+          var cls = data.classes[k];
+          ST.classes[k] = {
+            name: cls.name, school: cls.school,
+            students: (cls.students || []).map(function(s, si) {
+              return { name: s.name, number: s.number, photoData: photos[k+'_'+si] || null };
+            })
+          };
+        }
+        if (data.schoolName) ST.schoolName = data.schoolName;
+        // Yeni key'e kopyala
+        var newKey = getTeacherPdfKey();
+        if (usedKey !== newKey) {
+          try { localStorage.setItem(newKey, raw); localStorage.setItem(newKey+'_photos', localStorage.getItem(usedKey+'_photos')||'{}'); } catch(e2) {}
+        }
+        saveST();
+      } catch(e) { console.warn('PDF yükleme hatası:', e); }
     }
-    saveST();
-  } catch(e) { console.warn('Öğretmen verisi yükleme hatası:', e); }
+  } else {
+    // Sınıflar var — sadece fotoğrafları yükle
+    var pdfKey = getTeacherPdfKey();
+    var photos = {};
+    var keysToTry = [pdfKey, getKurumPdfKey(), localStorage.getItem('_lastPdfKey')].filter(Boolean);
+    for (var pi = 0; pi < keysToTry.length; pi++) {
+      try {
+        var ph = JSON.parse(localStorage.getItem(keysToTry[pi] + '_photos') || 'null');
+        if (ph) { photos = ph; break; }
+      } catch(e) {}
+    }
+    if (Object.keys(photos).length > 0) {
+      for (var ck in ST.classes) {
+        ST.classes[ck].students.forEach(function(s, si) {
+          if (!s.photoData) s.photoData = photos[ck+'_'+si] || null;
+        });
+      }
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
