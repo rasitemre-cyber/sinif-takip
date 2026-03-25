@@ -150,9 +150,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 /* ── GRADING FULLSCREEN ── */
 #gradingScreen{position:fixed;inset:0;background:var(--bg);z-index:200;
   display:none;flex-direction:column;align-items:center;justify-content:flex-start;
-  padding:20px 24px 0;overflow:hidden}
+  padding:0;overflow:hidden}
 #gradingScreen.open{display:flex}
-.g-header{width:100%;display:flex;justify-content:space-between;align-items:center}
+.g-header{width:100%;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;padding:20px 24px 12px;background:var(--bg)}
 .g-prog{font-family:'Syne',sans-serif;font-size:13px;color:var(--muted);letter-spacing:1px}
 .g-prog span{color:var(--acc);font-weight:700}
 .g-card{display:flex;flex-direction:column;align-items:center;gap:18px;animation:fadeUp .35s ease}
@@ -163,7 +163,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .g-photo img{width:100%;height:100%;object-fit:cover}
 .g-name{font-family:'Syne',sans-serif;font-size:clamp(20px,4vw,30px);font-weight:800;text-align:center}
 .g-num{color:var(--muted);font-size:15px;margin-top:-10px}
-.g-bubble-wrap{position:relative;width:min(480px,90vw);height:56px;margin-bottom:4px}
+.g-bubble-wrap{position:relative;width:min(480px,90vw);height:60px;margin-bottom:4px;overflow:visible}
 .g-bubble{position:absolute;transform:translateX(-50%);bottom:0;
   background:linear-gradient(135deg,#43e97b,#38f9d7);
   color:#0a0a0f;font-family:'Syne',sans-serif;font-size:22px;font-weight:800;
@@ -175,13 +175,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   filter:drop-shadow(0 2px 4px rgba(0,0,0,.2))}
 .g-bubble.low{background:linear-gradient(135deg,#ff6584,#ff9a44);box-shadow:0 4px 20px rgba(255,101,132,.4)}
 .g-bubble.mid{background:linear-gradient(135deg,#ffd700,#ffb347);box-shadow:0 4px 20px rgba(255,215,0,.4)}
-.g-slider-wrap{width:min(480px,90vw);display:flex;flex-direction:column;gap:10px;align-items:center}
+.g-slider-wrap{width:min(480px,90vw);display:flex;flex-direction:column;gap:10px;align-items:center;flex-shrink:0;touch-action:none}
 .g-slider-labels{width:100%;display:flex;justify-content:space-between;color:var(--muted);font-size:12px}
-input[type=range]{-webkit-appearance:none;width:100%;height:6px;background:var(--surf2);
-  border-radius:100px;outline:none;cursor:pointer}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;
-  background:#fff;border-radius:50%;box-shadow:0 4px 16px rgba(0,0,0,.4);cursor:grab;transition:transform .15s}
-input[type=range]::-webkit-slider-thumb:active{transform:scale(1.2);cursor:grabbing}
+input[type=range]{-webkit-appearance:none;width:100%;height:8px;background:var(--surf2);
+  border-radius:100px;outline:none;cursor:pointer;touch-action:pan-x;
+  -webkit-tap-highlight-color:transparent}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:32px;height:32px;
+  background:#fff;border-radius:50%;box-shadow:0 2px 12px rgba(0,0,0,.35);cursor:grab;
+  transition:none;border:2px solid rgba(108,99,255,.3)}
+input[type=range]::-webkit-slider-thumb:active{transform:scale(1.1);cursor:grabbing}
+input[type=range]::-moz-range-thumb{width:32px;height:32px;background:#fff;border-radius:50%;
+  border:2px solid rgba(108,99,255,.3);cursor:grab;box-shadow:0 2px 12px rgba(0,0,0,.35)}
 .g-next{background:linear-gradient(135deg,#6c63ff,#8b5cf6);border:none;color:#fff;
   padding:16px 60px;border-radius:14px;font-family:'Syne',sans-serif;font-size:17px;
   font-weight:700;cursor:pointer;transition:all .3s;box-shadow:0 8px 28px rgba(108,99,255,.3);margin-top:20px}
@@ -1011,9 +1015,11 @@ if (!_forceLocal) {
     <div class="g-prog">Öğrenci <span id="gCur">1</span> / <span id="gTot">0</span></div>
     <button class="back" onclick="closeGrading()">✕ Kapat</button>
   </div>
-  <div id="gBody"></div>
-  <div style="display:flex;flex-direction:column;align-items:center;width:100%;overflow-y:auto;flex:1;padding-bottom:20px">
-    <div class="g-slider-wrap" style="margin-top:12px">
+  <!-- Scrollable içerik alanı -->
+  <div style="flex:1;overflow-y:auto;overflow-x:hidden;width:100%;display:flex;flex-direction:column;align-items:center;padding:0 24px 32px;-webkit-overflow-scrolling:touch">
+    <div id="gBody" style="width:100%;display:flex;justify-content:center"></div>
+    <!-- Slider -->
+    <div class="g-slider-wrap" style="margin-top:16px">
       <div class="g-bubble-wrap">
         <div class="g-bubble" id="gBubble">50</div>
       </div>
@@ -1510,6 +1516,11 @@ async function teacherLogin() {
   }
 }
 
+function gotoHome() {
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  document.getElementById('home').classList.add('active');
+}
+
 function teacherLogout() {
   currentTeacher = null;
   ST.savedTeacher = null;
@@ -1531,8 +1542,9 @@ function closeSidebar() {
 // __ KURUM BAZLI PDF STORAGE (ayni okuldaki tum ogretmenler paylasir)
 function getTeacherPdfKey() {
   if (!currentTeacher) return null;
-  // Öğretmene özel key — her öğretmenin fotoğrafları ayrı saklanır
-  return 'teacherPdf_' + currentTeacher.id;
+  // Kurum kodu + isim kombinasyonu — id değişse bile aynı key
+  var safeName = (currentTeacher.name || '').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+  return 'teacherPdf_' + currentTeacher.kurumKodu + '_' + safeName;
 }
 function getKurumPdfKey() {
   if (!currentTeacher) return null;
@@ -1628,17 +1640,14 @@ function updateLastPdfBtn() {
 }
 
 function loadTeacherData() {
-  ST.classes = {};
-  ST.activeClass = null;
-  ST.schoolName = '';
-
   if (!currentTeacher) return;
 
-  // Önce öğretmene özel key'i dene, bulamazsa eski kurum key'ini dene (geri uyumluluk)
+  // Önce öğretmene özel key'i dene, bulamazsa eski kurum key'lerini dene
   const keys_to_try = [
-    getTeacherPdfKey(),           // teacherPdf_<id>
-    getKurumPdfKey(),             // kurumPdf_<kurum>
-    'kurumPdf_' + (currentTeacher.kurumKodu || '')
+    getTeacherPdfKey(),
+    getKurumPdfKey(),
+    'kurumPdf_' + (currentTeacher.kurumKodu || ''),
+    localStorage.getItem('_lastPdfKey')
   ].filter(Boolean);
 
   let raw = null, usedKey = null;
@@ -1646,7 +1655,16 @@ function loadTeacherData() {
     raw = localStorage.getItem(k);
     if (raw) { usedKey = k; break; }
   }
-  if (!raw) return;
+
+  // PDF verisi yoksa mevcut ST.classes'ı koru (classMeta'dan zaten yüklenmiş)
+  if (!raw) {
+    console.log('PDF verisi bulunamadı, mevcut sınıflar korunuyor. Keys denendi:', keys_to_try);
+    return;
+  }
+
+  ST.classes = {};
+  ST.activeClass = null;
+  ST.schoolName = ''
 
   try {
     const data = JSON.parse(raw);
@@ -1679,14 +1697,25 @@ function loadTeacherData() {
 function loadST() {
   try {
     const d = JSON.parse(localStorage.getItem('sinifTakip3') || '{}');
-    // classMeta'yı classes'a geri çevir
-    if (d.classMeta && !d.classes) {
+    // classMeta'dan classes'a dönüştür (her zaman)
+    if (d.classMeta) {
       d.classes = {};
-      // Fotoğrafları yükle
       let photos = {};
-      const pdfKey = localStorage.getItem('_lastPdfKey');
-      if (pdfKey) {
-        try { photos = JSON.parse(localStorage.getItem(pdfKey + '_photos') || '{}'); } catch(e) {}
+      // Fotoğrafları tüm olası key'lerden yüklemeyi dene
+      var savedTeacher = d.savedTeacher;
+      var pdfKeys = [];
+      if (savedTeacher) {
+        var safeName = (savedTeacher.name || '').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+        pdfKeys.push('teacherPdf_' + savedTeacher.kurumKodu + '_' + safeName);
+        pdfKeys.push('kurumPdf_' + savedTeacher.kurumKodu);
+      }
+      var lastKey = localStorage.getItem('_lastPdfKey');
+      if (lastKey) pdfKeys.push(lastKey);
+      for (var ki = 0; ki < pdfKeys.length; ki++) {
+        try {
+          var ph = JSON.parse(localStorage.getItem(pdfKeys[ki] + '_photos') || 'null');
+          if (ph) { photos = ph; break; }
+        } catch(e) {}
       }
       for (const [k, cls] of Object.entries(d.classMeta)) {
         d.classes[k] = {
@@ -1866,28 +1895,41 @@ function restoreOrResetStudentPage() {
 }
 
 // ── GERİ TUŞU SİSTEMİ ──
-// Her zaman aynı URL'yi kullan - file:// protokolünde güvenli
-var _appBase = location.href.split('#')[0];
+// Basit ve güvenilir: sadece 1 pushState, popstate'de hep geri it
 function navPush() {
-  history.pushState({ app: true, t: Date.now() }, '', _appBase);
+  try { history.pushState({ app: true }, '', location.href.split('?')[0].split('#')[0]); } catch(e) {}
 }
 
-// Başlangıçta stack'e 5 entry koy — ardarda 5 geri basılsa bile çıkılmaz
-history.replaceState({ app: true, t: 0 }, '', _appBase);
-navPush(); navPush(); navPush(); navPush();
+// Başlangıçta 2 entry — böylece 1 popstate'de home'a dön, 2.'de tarayıcı önceki sayfaya gider
+try {
+  history.replaceState({ app: true }, '', location.href.split('?')[0].split('#')[0]);
+  history.pushState({ app: true }, '', location.href.split('?')[0].split('#')[0]);
+} catch(e) {}
 
 // Hangi katmandayız tespit et
 function getCurrentLayer() {
+  // Sırayla üstten alta — açık olan ilk katmanı döndür
   const gs = document.getElementById('gradingScreen');
   if (gs && (gs.classList.contains('open') || gs.style.display === 'flex')) return 'grading';
+
   const gm = document.getElementById('gradeModal');
-  if (gm && gm.querySelector('.gm-modal') && gm.style.display !== 'none') return 'gradeModal';
+  if (gm && gm.style.display === 'flex') return 'gradeModal';
+
   const ap = document.getElementById('adminPanelModal');
-  if (ap && ap.classList.contains('open')) return 'admin';
+  if (ap && ap.style.display === 'flex') return 'admin';
+
+  const hw = document.getElementById('hwModal');
+  if (hw && hw.style.display === 'flex') return 'hwModal';
+
+  const cs = document.getElementById('classSelectModal');
+  if (cs && cs.style.display === 'flex') return 'classSelect';
+
+  const tm = document.getElementById('teacherModal');
+  if (tm && tm.style.display === 'flex') return 'teacherAuth';
+
   const sb = document.querySelector('.sidebar.open');
   if (sb) return 'sidebar';
-  const tm = document.getElementById('teacherModal');
-  if (tm && tm.classList.contains('open')) return 'teacherAuth';
+
   const activeScreen = document.querySelector('.screen.active');
   if (activeScreen) return activeScreen.id;
   return 'home';
@@ -1896,53 +1938,46 @@ function getCurrentLayer() {
 window.addEventListener('popstate', function(e) {
   var layer = getCurrentLayer();
 
-  switch(layer) {
-    case 'grading':
-      var gsBack = document.getElementById('gradingScreen');
-      gsBack.classList.remove('open');
-      gsBack.style.display = 'none';
-      break;
-    case 'gradeModal':
-      closeGradeModal();
-      break;
-    case 'admin':
-      closeAdminPanel();
-      break;
-    case 'sidebar':
-      closeSidebar();
-      break;
-    case 'teacherAuth':
-      closeTeacherAuth();
-      break;
-    case 'teacher':
-      // Öğretmen panelinden home'a git — oturumu KAPATMA
-      document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
-      document.getElementById('home').classList.add('active');
-      break;
-    case 'student':
-      // Dashboard açıksa → ders seçimine dön
-      if (document.getElementById('sDash').style.display !== 'none') {
-        document.getElementById('sDash').style.display = 'none';
-        document.getElementById('btnBackSubjects').style.display = 'none';
-        if (ST.loggedIn !== null && ST.loggedIn !== undefined) {
-          var req = ST.requests[ST.loggedIn];
-          showSubjectSelect(ST.loggedIn, req ? (req.schoolName || '') : '');
-        } else {
-          document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
-          document.getElementById('home').classList.add('active');
-        }
-      } else {
-        // Login veya ders seçim ekranındaysa home'a git — oturumu KAPATMA
-        document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
-        document.getElementById('home').classList.add('active');
-      }
-      break;
-    default:
-      // Home'dayız — asla dışarı çıkma
-      break;
+  if (layer === 'grading') {
+    var gs = document.getElementById('gradingScreen');
+    gs.classList.remove('open'); gs.style.display = 'none';
+  } else if (layer === 'gradeModal') {
+    closeGradeModal();
+  } else if (layer === 'admin') {
+    closeAdminPanel();
+  } else if (layer === 'hwModal') {
+    closeHwModal();
+  } else if (layer === 'classSelect') {
+    var csCl = document.getElementById('classSelectModal');
+    csCl.classList.remove('open'); csCl.style.display = 'none';
+  } else if (layer === 'sidebar') {
+    closeSidebar();
+  } else if (layer === 'teacherAuth') {
+    closeTeacherAuth();
+  } else if (layer === 'teacher') {
+    // Öğretmen panelinden home'a git — oturumu kapatma
+    document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+    document.getElementById('home').classList.add('active');
+  } else if (layer === 'student') {
+    var sDash = document.getElementById('sDash');
+    if (sDash.style.display !== 'none') {
+      // Dashboard → ders seçimine dön
+      sDash.style.display = 'none';
+      document.getElementById('btnBackSubjects').style.display = 'none';
+      if (ST.loggedIn !== null && ST.loggedIn !== undefined) {
+        var req = ST.requests[ST.loggedIn];
+        if (req) showSubjectSelect(ST.loggedIn, req.schoolName || '');
+        else { gotoHome(); }
+      } else { gotoHome(); }
+    } else {
+      // Login/ders seçim → home'a git
+      gotoHome();
+    }
+  } else {
+    // home veya bilinmeyen — tarayıcıdan çıkılmasın diye push et
   }
 
-  // Stack'te her zaman entry olsun — uygulamadan çıkılmasın
+  // Her zaman yeni entry ekle — stack hiç tükenmesin
   navPush();
 });
 
@@ -2329,6 +2364,7 @@ function startGrading() {
   var gs = document.getElementById('gradingScreen');
   gs.style.display = 'flex';
   gs.classList.add('open');
+  _sliderW = 0; // reset cache so width is remeasured
   document.getElementById('gNext').style.display = '';
   navPush();
   showGrading();
@@ -2351,6 +2387,7 @@ function showGrading() {
     document.getElementById('gNotePrev').innerHTML = '';
     document.querySelector('.g-slider-wrap').style.display = 'none';
     document.getElementById('gBubble').style.display = 'none';
+    var hwl = document.getElementById('gHwList'); if(hwl) hwl.style.display = 'none';
     renderTeacher();
     return;
   }
@@ -2391,22 +2428,22 @@ function showGrading() {
   renderGradingHwList(gradIdx);
 }
 
+var _sliderW = 0;
 function onSlide(val) {
   val = parseInt(val);
   const bubble = document.getElementById('gBubble');
   const slider = document.getElementById('gSlider');
   bubble.textContent = val;
   bubble.className = 'g-bubble' + (val < 45 ? ' low' : val < 75 ? ' mid' : '');
-  // Position bubble above thumb
+  // Cache slider width — only measure when needed
+  if (!_sliderW || _sliderW < 10) _sliderW = slider.offsetWidth || 320;
   const pct = (val - 1) / 99;
-  const sliderW = slider.offsetWidth || slider.getBoundingClientRect().width || 400;
-  const thumbW = 28;
-  const pos = thumbW/2 + pct * (sliderW - thumbW);
+  const thumbW = 32;
+  const pos = thumbW / 2 + pct * (_sliderW - thumbW);
   bubble.style.left = pos + 'px';
-  // Update slider track fill
   const pct100 = pct * 100;
   slider.style.background =
-    `linear-gradient(90deg, #6c63ff ${pct100}%, var(--surf2) ${pct100}%)`;
+    'linear-gradient(90deg, #6c63ff ' + pct100 + '%, var(--surf2) ' + pct100 + '%)';
 }
 
 function saveAndNext() {
@@ -2433,7 +2470,9 @@ function saveAndNext() {
 }
 
 function closeGrading() {
-  document.getElementById('gradingScreen').classList.remove('open');
+  var gs = document.getElementById('gradingScreen');
+  gs.classList.remove('open');
+  gs.style.display = 'none';
   renderTeacher();
 }
 
