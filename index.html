@@ -24,6 +24,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 /* ── SCREENS ── */
 .screen{display:none;min-height:100vh;flex-direction:column}
+.screen:not(.active) > *{display:none !important}
 .screen.active{display:flex}
 
 /* ── HOME ── */
@@ -1925,7 +1926,14 @@ function goto(id, pushHistory) {
     if (!currentTeacher) { goto('home', false); return; }
     autoLoadPreloaded(); updateLastPdfBtn(); renderTeacher();
   }
-  if (id === 'student') restoreOrResetStudentPage();
+  if (id === 'student') {
+    // Önce hepsini kapat, sonra doğru olanı aç
+    document.getElementById('sLoginWrap').style.display = 'none';
+    document.getElementById('sSubjectWrap').style.display = 'none';
+    document.getElementById('sDash').style.display = 'none';
+    document.getElementById('btnBackSubjects').style.display = 'none';
+    restoreOrResetStudentPage();
+  }
   if (pushHistory !== false) navPush();
 }
 
