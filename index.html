@@ -1554,288 +1554,170 @@ function closeSidebar() {
 }
 
 // __ KURUM BAZLI PDF STORAGE (ayni okuldaki tum ogretmenler paylasir)
-function getTeacherPdfKey() {
-  if (!currentTeacher) return null;
-  // Kaydedilmiş key varsa onu kullan (login anında hesaplanmış, tutarlı)
-  if (currentTeacher._pdfKey) return currentTeacher._pdfKey;
-  // Yoksa hesapla
-  var safeName = (currentTeacher.name || '').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-  return 'teacherPdf_' + currentTeacher.kurumKodu + '_' + safeName;
-}
-function getKurumPdfKey() {
-  if (!currentTeacher) return null;
-  return 'kurumPdf_' + currentTeacher.kurumKodu;
+// ═══════════════════════════════════════════════════════════════
+// STORAGE - TEK KAYNAK: sinifTakip3
+// ═══════════════════════════════════════════════════════════════
+
+// Sabit fotoğraf key'i - kurum bazlı
+function getPhotoKey() {
+  return '_photos_' + (currentTeacher ? currentTeacher.kurumKodu : 'default');
 }
 
-function saveTeacherPdf() {
-  const key = getTeacherPdfKey();
-  if (!key) return;
-
-  const data = {
-    schoolName: ST.schoolName,
-    classes: Object.fromEntries(
-      Object.entries(ST.classes).map(([k, cls]) => [k, {
-        name: cls.name,
-        school: cls.school,
-        students: cls.students.map(s => ({ name: s.name, number: s.number }))
-      }])
-    ),
-    savedAt: new Date().toISOString()
-  };
-  const dataStr = JSON.stringify(data);
-
-  // 1. localStorage'a kaydet
+function savePhotos(classKey, students) {
   try {
-    localStorage.setItem('_lastPdfKey', key);
-    localStorage.setItem(key, dataStr);
-    const photoObj = {};
-    Object.entries(ST.classes).forEach(([k, cls]) => {
-      cls.students.forEach((s, si) => {
-        if (s.photoData) photoObj[k + '_' + si] = s.photoData;
-      });
+    var existing = {};
+    try { existing = JSON.parse(localStorage.getItem(getPhotoKey()) || '{}'); } catch(e) {}
+    students.forEach(function(s, si) {
+      if (s.photoData) existing[classKey + '_' + si] = s.photoData;
     });
-    try { localStorage.setItem(key + '_photos', JSON.stringify(photoObj)); } catch(e) {}
-  } catch(e) { console.warn('localStorage kaydetme hatası:', e); }
-
-  // 2. sinifTakip3'teki classMeta'yı da güncelle — restore'da direkt yüklensin
-  try {
-    var st3 = JSON.parse(localStorage.getItem('sinifTakip3') || '{}');
-    st3.classMeta = data.classes;
-    st3.schoolName = ST.schoolName;
-    if (currentTeacher && currentTeacher._pdfKey) st3._pdfKey = currentTeacher._pdfKey;
-    localStorage.setItem('sinifTakip3', JSON.stringify(st3));
+    localStorage.setItem(getPhotoKey(), JSON.stringify(existing));
   } catch(e) {}
-
-  // 3. Supabase'e kaydet (fotoğraf hariç) — tüm cihazlardan erişim için
-  if (currentTeacher && currentTeacher.id) {
-    try {
-      sb.from('teachers').update({ class_data: dataStr }).eq('id', currentTeacher.id)
-        .then(function(){}).catch(function(){});
-    } catch(e) {}
-  }
 }
 
-// Supabase'den sınıf verisini yükle
-async function loadClassDataFromCloud() {
-  if (!currentTeacher || !currentTeacher.id) return false;
+function loadPhotos(classKey, students) {
   try {
-    const { data: t } = await sb.from('teachers').select('class_data').eq('id', currentTeacher.id).single();
-    if (!t || !t.class_data) return false;
-    const data = JSON.parse(t.class_data);
-    if (!data.classes || Object.keys(data.classes).length === 0) return false;
-    // Sınıfları yükle (fotoğrafsız)
-    for (const [k, cls] of Object.entries(data.classes)) {
-      if (!ST.classes[k]) {
-        ST.classes[k] = {
-          name: cls.name, school: cls.school,
-          students: (cls.students || []).map(s => ({ name: s.name, number: s.number, photoData: null }))
-        };
-      }
-    }
-    if (data.schoolName) ST.schoolName = data.schoolName;
-    saveST();
-    console.log("Sinif verisi cloud dan yuklendi");
-    return true;
-  } catch(e) {
-    console.warn("Cloud yukleme hatasi:", e);
-    return false;
-  }
+    var photos = JSON.parse(localStorage.getItem(getPhotoKey()) || '{}');
+    students.forEach(function(s, si) {
+      if (!s.photoData) s.photoData = photos[classKey + '_' + si] || null;
+    });
+  } catch(e) {}
 }
 
-function hasLastPdf() {
-  const key = getTeacherPdfKey();
-  if (!key) return false;
-  return !!localStorage.getItem(key);
-}
-
-function loadLastPdf() {
-  const key = getTeacherPdfKey();
-  if (!key) return;
+function attachAllPhotos() {
   try {
-    const raw = localStorage.getItem(key);
-    if (!raw) { alert('Daha önce yüklenmiş PDF bulunamadı.'); return; }
-    const data = JSON.parse(raw);
-    
-    let photos = {};
-    try { photos = JSON.parse(localStorage.getItem(key + '_photos') || '{}'); } catch(e) {}
-    for (const [k, cls] of Object.entries(data.classes)) {
-      if (!ST.classes[k]) {
-        ST.classes[k] = {
-          name: cls.name,
-          school: cls.school,
-          students: cls.students.map((s, si) => ({ name: s.name, number: s.number, photoData: (photos[k+'_'+si] || null) }))
-        };
-      }
-    }
-    if (data.schoolName) ST.schoolName = data.schoolName;
-    
-    const keys = Object.keys(ST.classes);
-    ST.activeClass = null;
-    saveST();
-    renderTeacher();
-    
-    const savedDate = new Date(data.savedAt).toLocaleString('tr-TR');
-    showToast(`Son yükleme geri yüklendi (${savedDate})`);
-  } catch(e) {
-    console.error(e);
-    alert('Son PDF yüklenirken hata oluştu.');
-  }
-}
-
-function showToast(msg) {
-  const toast = document.createElement('div');
-  toast.textContent = msg;
-  toast.style.cssText = `position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
-    background:rgba(67,233,123,.15);border:1px solid rgba(67,233,123,.35);color:#43e97b;
-    padding:12px 24px;border-radius:12px;font-size:14px;font-family:'DM Sans',sans-serif;
-    z-index:9999;animation:fadeUp .35s ease;pointer-events:none`;
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 3000);
-}
-
-function updateLastPdfBtn() {
-  const has = hasLastPdf();
-  const btn = document.getElementById('btnLastPdf');
-  const btnEmpty = document.getElementById('btnLastPdfEmpty');
-  if (btn) btn.style.display = has ? 'flex' : 'none';
-  if (btnEmpty) btnEmpty.style.display = has ? 'inline-flex' : 'none';
-}
-
-function loadTeacherData() {
-  if (!currentTeacher) return;
-  // ST.classes zaten loadST() tarafından classMeta'dan yüklendi.
-  // Burada sadece fotoğrafları ekle — sınıfları silme!
-  if (Object.keys(ST.classes).length === 0) {
-    // Sınıf yok — PDF key'lerinden yüklemeyi dene
-    var keys_to_try = [
-      getTeacherPdfKey(),
-      getKurumPdfKey(),
-      'kurumPdf_' + (currentTeacher.kurumKodu || ''),
-      localStorage.getItem('_lastPdfKey')
-    ].filter(Boolean);
-    var raw = null, usedKey = null;
-    for (var i = 0; i < keys_to_try.length; i++) {
-      raw = localStorage.getItem(keys_to_try[i]);
-      if (raw) { usedKey = keys_to_try[i]; break; }
-    }
-    if (raw) {
-      try {
-        var data = JSON.parse(raw);
-        var photos = {};
-        try { photos = JSON.parse(localStorage.getItem(usedKey + '_photos') || '{}'); } catch(e2) {}
-        for (var k in data.classes) {
-          var cls = data.classes[k];
-          ST.classes[k] = {
-            name: cls.name, school: cls.school,
-            students: (cls.students || []).map(function(s, si) {
-              return { name: s.name, number: s.number, photoData: photos[k+'_'+si] || null };
-            })
-          };
-        }
-        if (data.schoolName) ST.schoolName = data.schoolName;
-        // Yeni key'e kopyala
-        var newKey = getTeacherPdfKey();
-        if (usedKey !== newKey) {
-          try { localStorage.setItem(newKey, raw); localStorage.setItem(newKey+'_photos', localStorage.getItem(usedKey+'_photos')||'{}'); } catch(e2) {}
-        }
-        saveST();
-      } catch(e) { console.warn('PDF yükleme hatası:', e); }
-    }
-  } else {
-    // Sınıflar var — sadece fotoğrafları yükle
-    var pdfKey = getTeacherPdfKey();
+    var pkey = getPhotoKey();
+    // Eski key formatlarını da dene
     var photos = {};
-    var keysToTry = [pdfKey, getKurumPdfKey(), localStorage.getItem('_lastPdfKey')].filter(Boolean);
-    for (var pi = 0; pi < keysToTry.length; pi++) {
+    var keys = [pkey];
+    if (currentTeacher) {
+      keys.push('kurumPdf_' + currentTeacher.kurumKodu + '_photos');
+      var safe = (currentTeacher.name||'').replace(/[^a-zA-Z0-9]/g,'_').toLowerCase();
+      keys.push('teacherPdf_' + currentTeacher.kurumKodu + '_' + safe + '_photos');
+    }
+    var last = localStorage.getItem('_lastPdfKey');
+    if (last) keys.push(last + '_photos');
+    
+    for (var ki = 0; ki < keys.length; ki++) {
       try {
-        var ph = JSON.parse(localStorage.getItem(keysToTry[pi] + '_photos') || 'null');
-        if (ph) { photos = ph; break; }
+        var ph = JSON.parse(localStorage.getItem(keys[ki]) || 'null');
+        if (ph && Object.keys(ph).length > 0) { photos = ph; break; }
       } catch(e) {}
     }
-    if (Object.keys(photos).length > 0) {
-      for (var ck in ST.classes) {
-        ST.classes[ck].students.forEach(function(s, si) {
-          if (!s.photoData) s.photoData = photos[ck+'_'+si] || null;
-        });
-      }
-    }
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// STATE
-// ═══════════════════════════════════════════════════════════════
-function loadST() {
-  try {
-    const d = JSON.parse(localStorage.getItem('sinifTakip3') || '{}');
-    // _pdfKey varsa _lastPdfKey'e set et — fotoğraf yüklemesi için
-    if (d._pdfKey) {
-      try { localStorage.setItem('_lastPdfKey', d._pdfKey); } catch(e) {}
-    }
-    // classMeta'dan classes'a dönüştür (her zaman)
-    if (d.classMeta) {
-      d.classes = {};
-      let photos = {};
-      // Fotoğrafları tüm olası key'lerden yüklemeyi dene
-      var savedTeacher = d.savedTeacher;
-      var pdfKeys = [];
-      if (savedTeacher) {
-        var safeName = (savedTeacher.name || '').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-        pdfKeys.push('teacherPdf_' + savedTeacher.kurumKodu + '_' + safeName);
-        pdfKeys.push('kurumPdf_' + savedTeacher.kurumKodu);
-      }
-      var lastKey = localStorage.getItem('_lastPdfKey');
-      if (lastKey) pdfKeys.push(lastKey);
-      for (var ki = 0; ki < pdfKeys.length; ki++) {
-        try {
-          var ph = JSON.parse(localStorage.getItem(pdfKeys[ki] + '_photos') || 'null');
-          if (ph) { photos = ph; break; }
-        } catch(e) {}
-      }
-      for (const [k, cls] of Object.entries(d.classMeta)) {
-        d.classes[k] = {
-          name: cls.name,
-          school: cls.school,
-          students: cls.students.map((s, si) => ({ name: s.name, number: s.number, photoData: (photos[k+'_'+si] || null) }))
-        };
-      }
-      // classMeta'yı koru — saveST'de tekrar kullanılacak
-    }
-    return d;
-  } catch(e) { return {}; }
-}
-function saveST() {
-  // Mevcut kayıtlı classMeta'yı oku — ST.classes boşsa üzerine yazma
-  var existingMeta = null;
-  try {
-    var existing = JSON.parse(localStorage.getItem('sinifTakip3') || '{}');
-    existingMeta = existing.classMeta || null;
+    Object.keys(ST.classes).forEach(function(ck) {
+      ST.classes[ck].students.forEach(function(s, si) {
+        if (!s.photoData) s.photoData = photos[ck+'_'+si] || null;
+      });
+    });
   } catch(e) {}
+}
 
-  var currentMeta = Object.keys(ST.classes).length > 0
-    ? Object.fromEntries(
-        Object.entries(ST.classes).map(([k, cls]) => [k, {
-          name: cls.name,
-          school: cls.school,
-          students: cls.students.map(s => ({ name: s.name, number: s.number }))
-        }])
-      )
-    : existingMeta; // Boşsa eskiyi koru
+function saveST() {
+  // classMeta: ST.classes boşsa eski değeri koru
+  var classMeta;
+  if (Object.keys(ST.classes).length > 0) {
+    classMeta = {};
+    Object.keys(ST.classes).forEach(function(k) {
+      var cls = ST.classes[k];
+      classMeta[k] = {
+        name: cls.name, school: cls.school,
+        students: cls.students.map(function(s) { return { name: s.name, number: s.number }; })
+      };
+    });
+  } else {
+    // Boşsa mevcut classMeta'yı oku ve koru
+    try {
+      var prev = JSON.parse(localStorage.getItem('sinifTakip3') || '{}');
+      classMeta = prev.classMeta || null;
+    } catch(e) { classMeta = null; }
+  }
 
-  const slim = {
+  var slim = {
     grades: ST.grades,
     requests: ST.requests,
     period: ST.period,
     loggedIn: ST.loggedIn,
     studentSession: ST.studentSession || null,
-    schoolName: ST.schoolName || (existingMeta ? Object.values(existingMeta)[0]?.school || '' : ''),
+    schoolName: ST.schoolName,
     activeClass: ST.activeClass,
     savedTeacher: ST.savedTeacher || null,
     homeworks: ST.homeworks || {},
     teacherClasses: ST.teacherClasses || {},
-    classMeta: currentMeta
+    classMeta: classMeta
   };
   try { localStorage.setItem('sinifTakip3', JSON.stringify(slim)); } catch(e) {}
+}
+
+function loadST() {
+  try {
+    var d = JSON.parse(localStorage.getItem('sinifTakip3') || '{}');
+    if (d.classMeta && Object.keys(d.classMeta).length > 0) {
+      d.classes = {};
+      Object.keys(d.classMeta).forEach(function(k) {
+        var cls = d.classMeta[k];
+        d.classes[k] = {
+          name: cls.name, school: cls.school,
+          students: (cls.students || []).map(function(s) {
+            return { name: s.name, number: s.number, photoData: null };
+          })
+        };
+      });
+    }
+    return d;
+  } catch(e) { return {}; }
+}
+
+function saveTeacherPdf() {
+  if (!currentTeacher || Object.keys(ST.classes).length === 0) return;
+  // Fotoğrafları ayrı kaydet
+  var photoObj = {};
+  Object.keys(ST.classes).forEach(function(k) {
+    ST.classes[k].students.forEach(function(s, si) {
+      if (s.photoData) photoObj[k + '_' + si] = s.photoData;
+    });
+  });
+  try { localStorage.setItem(getPhotoKey(), JSON.stringify(photoObj)); } catch(e) {}
+  // Ana veriyi kaydet (classMeta ile birlikte)
+  saveST();
+}
+
+function loadTeacherData() {
+  // ST.classes loadST'den geldi, fotoğrafları ekle
+  if (Object.keys(ST.classes).length > 0) {
+    attachAllPhotos();
+  }
+}
+
+function hasLastPdf() {
+  return Object.keys(ST.classes).length > 0;
+}
+
+function loadLastPdf() {
+  // Artık PDF key yerine ST.classes'tan yükle
+  if (hasLastPdf()) {
+    renderTeacher();
+    showToast('Sınıf listesi yüklendi');
+  } else {
+    alert('Daha önce yüklenmiş sınıf bulunamadı.');
+  }
+}
+
+function showToast(msg) {
+  var toast = document.createElement('div');
+  toast.textContent = msg;
+  toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);' +
+    'background:rgba(67,233,123,.15);border:1px solid rgba(67,233,123,.35);color:#43e97b;' +
+    'padding:12px 24px;border-radius:12px;font-size:14px;font-family:DM Sans,sans-serif;' +
+    'z-index:9999;animation:fadeUp .35s ease;pointer-events:none';
+  document.body.appendChild(toast);
+  setTimeout(function() { toast.remove(); }, 3000);
+}
+
+function updateLastPdfBtn() {
+  var has = hasLastPdf();
+  var btn = document.getElementById('btnLastPdf');
+  var btnEmpty = document.getElementById('btnLastPdfEmpty');
+  if (btn) btn.style.display = has ? 'flex' : 'none';
+  if (btnEmpty) btnEmpty.style.display = has ? 'inline-flex' : 'none';
 }
 
 const ST = {
@@ -1873,71 +1755,46 @@ Object.keys(ST.classes).forEach(k => loadPhotos(k, ST.classes[k].students));
 
 // ── Sayfa açılışında oturumu otomatik geri yükle ──────────────────────────
 (function restoreSession() {
-  // Öğretmen oturumu — önce ST'den, yoksa yedek key'den yükle
-  if (!ST.savedTeacher) {
-    try {
-      var backup = localStorage.getItem('_savedTeacher');
-      if (backup) { ST.savedTeacher = JSON.parse(backup); }
-    } catch(e) {}
+  // ── Öğretmen oturumu ──
+  var teacher = ST.savedTeacher;
+  if (!teacher) {
+    try { teacher = JSON.parse(localStorage.getItem('_savedTeacher') || 'null'); } catch(e) {}
+    if (teacher) { ST.savedTeacher = teacher; }
   }
-  if (ST.savedTeacher) {
+
+  if (teacher) {
     try {
-      currentTeacher = ST.savedTeacher;
-      var t = currentTeacher;
-      // pdfKey'i geri yükle
-      if (t._pdfKey) {
-        try { localStorage.setItem('_lastPdfKey', t._pdfKey); } catch(e) {}
-      }
+      currentTeacher = teacher;
+      // UI güncelle
       var btnAdmin = document.getElementById('btnAdmin');
       var sbName   = document.getElementById('sbTeacherName');
       var sbBranch = document.getElementById('sbTeacherBranch');
-      if (btnAdmin) btnAdmin.style.display = t.isAdmin ? '' : 'none';
-      if (sbName)   sbName.textContent   = t.name || '';
-      if (sbBranch) sbBranch.textContent = (t.branch || '') + (t.schoolName ? ' · ' + t.schoolName : '');
-      // ST.classes zaten loadST() ile yüklendi — sadece fotoğrafları ekle
-      if (Object.keys(ST.classes).length > 0) {
-        // Fotoğrafları yükle
-        var pKey = t._pdfKey || localStorage.getItem('_lastPdfKey');
-        if (pKey) {
-          try {
-            var photos = JSON.parse(localStorage.getItem(pKey + '_photos') || '{}');
-            Object.keys(ST.classes).forEach(function(ck) {
-              ST.classes[ck].students.forEach(function(s, si) {
-                if (!s.photoData) s.photoData = photos[ck+'_'+si] || null;
-              });
-            });
-          } catch(e) {}
-        }
-      } else {
-        // Sınıf yoksa PDF'den yükle
-        loadTeacherData();
-      }
-      // Ekranı teacher'a al
+      if (btnAdmin) btnAdmin.style.display = teacher.isAdmin ? '' : 'none';
+      if (sbName)   sbName.textContent   = teacher.name || '';
+      if (sbBranch) sbBranch.textContent = (teacher.branch || '') + (teacher.schoolName ? ' · ' + teacher.schoolName : '');
+      // Fotoğrafları ekle (sınıflar loadST'den geldi)
+      attachAllPhotos();
+      // Ekrana geç
       document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
       document.getElementById('teacher').classList.add('active');
       autoLoadPreloaded();
       updateLastPdfBtn();
       renderTeacher();
-      // Sinif verisi yoksa cloud'dan yukle
-      if (Object.keys(ST.classes).length === 0) {
-        loadClassDataFromCloud().then(function(loaded) {
-          if (loaded) { updateLastPdfBtn(); renderTeacher(); }
-        });
-      }
       return;
     } catch(e) {
-      console.warn('Oturum geri yüklenemedi:', e);
-      ST.savedTeacher = null; saveST();
+      console.warn('Oturum geri yuklenemedi:', e);
+      ST.savedTeacher = null;
+      try { localStorage.removeItem('_savedTeacher'); } catch(e2) {}
     }
   }
-  // Öğrenci oturumu - ST'den yoksa backup key'den yükle
+
+  // ── Öğrenci oturumu ──
   if (ST.loggedIn === null || ST.loggedIn === undefined) {
     try {
-      var sBak = localStorage.getItem('_studentSession');
+      var sBak = JSON.parse(localStorage.getItem('_studentSession') || 'null');
       if (sBak) {
-        var sd = JSON.parse(sBak);
-        ST.loggedIn = sd.loggedIn;
-        ST.studentSession = { reqIdx: sd.reqIdx, teacherId: sd.teacherId, teacherName: sd.teacherName, branch: sd.branch };
+        ST.loggedIn = sBak.loggedIn;
+        ST.studentSession = { reqIdx: sBak.reqIdx, teacherId: sBak.teacherId, teacherName: sBak.teacherName, branch: sBak.branch };
         studentSession = ST.studentSession;
       }
     } catch(e) {}
