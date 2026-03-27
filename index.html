@@ -1488,8 +1488,14 @@ async function teacherLogin() {
     currentTeacher = { id: teacher.id, name: teacher.full_name, branch: teacher.branch,
       kurumKodu: teacher.kurum_kodu, schoolName: teacher.school_name, isAdmin };
     // Oturumu kalıcı olarak kaydet - hem ST hem ayrı key (çift güvence)
+    // pdfKey'i şimdi hesapla ve sakla — restore sırasında currentTeacher hazır olmayabilir
+    var _pdfKey = 'teacherPdf_' + currentTeacher.kurumKodu + '_' +
+      (currentTeacher.name || '').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+    currentTeacher._pdfKey = _pdfKey;
     ST.savedTeacher = { ...currentTeacher };
     try { localStorage.setItem('_savedTeacher', JSON.stringify(currentTeacher)); } catch(e) {}
+    // PDF key'ini ayrıca da kaydet
+    try { localStorage.setItem('_lastPdfKey', _pdfKey); } catch(e) {}
     saveST();
 
   closeTeacherAuth();
@@ -1550,7 +1556,9 @@ function closeSidebar() {
 // __ KURUM BAZLI PDF STORAGE (ayni okuldaki tum ogretmenler paylasir)
 function getTeacherPdfKey() {
   if (!currentTeacher) return null;
-  // Kurum kodu + isim kombinasyonu — id değişse bile aynı key
+  // Kaydedilmiş key varsa onu kullan (login anında hesaplanmış, tutarlı)
+  if (currentTeacher._pdfKey) return currentTeacher._pdfKey;
+  // Yoksa hesapla
   var safeName = (currentTeacher.name || '').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
   return 'teacherPdf_' + currentTeacher.kurumKodu + '_' + safeName;
 }
@@ -1863,6 +1871,10 @@ Object.keys(ST.classes).forEach(k => loadPhotos(k, ST.classes[k].students));
     try {
       currentTeacher = ST.savedTeacher;
       var t = currentTeacher;
+      // pdfKey'i geri yükle
+      if (t._pdfKey) {
+        try { localStorage.setItem('_lastPdfKey', t._pdfKey); } catch(e) {}
+      }
       var btnAdmin = document.getElementById('btnAdmin');
       var sbName   = document.getElementById('sbTeacherName');
       var sbBranch = document.getElementById('sbTeacherBranch');
