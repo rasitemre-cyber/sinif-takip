@@ -1487,8 +1487,9 @@ async function teacherLogin() {
     const isAdmin = teacher.is_admin === true || teacher.is_admin === 'true';
     currentTeacher = { id: teacher.id, name: teacher.full_name, branch: teacher.branch,
       kurumKodu: teacher.kurum_kodu, schoolName: teacher.school_name, isAdmin };
-    // Oturumu kalıcı olarak kaydet
+    // Oturumu kalıcı olarak kaydet - hem ST hem ayrı key (çift güvence)
     ST.savedTeacher = { ...currentTeacher };
+    try { localStorage.setItem('_savedTeacher', JSON.stringify(currentTeacher)); } catch(e) {}
     saveST();
 
   closeTeacherAuth();
@@ -1530,6 +1531,7 @@ function gotoHome() {
 function teacherLogout() {
   currentTeacher = null;
   ST.savedTeacher = null;
+  try { localStorage.removeItem('_savedTeacher'); } catch(e) {}
   saveST();
   document.getElementById('btnAdmin').style.display = 'none';
   closeSidebar();
@@ -1850,7 +1852,13 @@ Object.keys(ST.classes).forEach(k => loadPhotos(k, ST.classes[k].students));
 
 // ── Sayfa açılışında oturumu otomatik geri yükle ──────────────────────────
 (function restoreSession() {
-  // Öğretmen oturumu — Supabase'e gitmeden localStorage'dan geri yükle
+  // Öğretmen oturumu — önce ST'den, yoksa yedek key'den yükle
+  if (!ST.savedTeacher) {
+    try {
+      var backup = localStorage.getItem('_savedTeacher');
+      if (backup) { ST.savedTeacher = JSON.parse(backup); }
+    } catch(e) {}
+  }
   if (ST.savedTeacher) {
     try {
       currentTeacher = ST.savedTeacher;
@@ -1880,7 +1888,18 @@ Object.keys(ST.classes).forEach(k => loadPhotos(k, ST.classes[k].students));
       ST.savedTeacher = null; saveST();
     }
   }
-  // Öğrenci oturumu
+  // Öğrenci oturumu - ST'den yoksa backup key'den yükle
+  if (ST.loggedIn === null || ST.loggedIn === undefined) {
+    try {
+      var sBak = localStorage.getItem('_studentSession');
+      if (sBak) {
+        var sd = JSON.parse(sBak);
+        ST.loggedIn = sd.loggedIn;
+        ST.studentSession = { reqIdx: sd.reqIdx, teacherId: sd.teacherId, teacherName: sd.teacherName, branch: sd.branch };
+        studentSession = ST.studentSession;
+      }
+    } catch(e) {}
+  }
   if (ST.loggedIn !== null && ST.loggedIn !== undefined) {
     var req = ST.requests[ST.loggedIn];
     if (req) {
@@ -2841,6 +2860,8 @@ function selectSubject(reqIdx, teacherId, teacherName, branch) {
   ST.studentSession = studentSession;
   ST.loggedIn = reqIdx;
   saveST();
+  // Çift güvence - ayrı key
+  try { localStorage.setItem('_studentSession', JSON.stringify({reqIdx, teacherId, teacherName, branch, loggedIn: reqIdx})); } catch(e) {}
   showDash(reqIdx);
 }
 
@@ -3418,6 +3439,7 @@ function studentLogout() {
   ST.loggedIn = null;
   ST.studentSession = null;
   studentSession = null;
+  try { localStorage.removeItem('_studentSession'); } catch(e) {}
   saveST();
   goto('home');
 }
