@@ -1597,7 +1597,16 @@ function saveTeacherPdf() {
     try { localStorage.setItem(key + '_photos', JSON.stringify(photoObj)); } catch(e) {}
   } catch(e) { console.warn('localStorage kaydetme hatası:', e); }
 
-  // 2. Supabase'e kaydet (fotoğraf hariç) — tüm cihazlardan erişim için
+  // 2. sinifTakip3'teki classMeta'yı da güncelle — restore'da direkt yüklensin
+  try {
+    var st3 = JSON.parse(localStorage.getItem('sinifTakip3') || '{}');
+    st3.classMeta = data.classes;
+    st3.schoolName = ST.schoolName;
+    if (currentTeacher && currentTeacher._pdfKey) st3._pdfKey = currentTeacher._pdfKey;
+    localStorage.setItem('sinifTakip3', JSON.stringify(st3));
+  } catch(e) {}
+
+  // 3. Supabase'e kaydet (fotoğraf hariç) — tüm cihazlardan erişim için
   if (currentTeacher && currentTeacher.id) {
     try {
       sb.from('teachers').update({ class_data: dataStr }).eq('id', currentTeacher.id)
@@ -1759,6 +1768,10 @@ function loadTeacherData() {
 function loadST() {
   try {
     const d = JSON.parse(localStorage.getItem('sinifTakip3') || '{}');
+    // _pdfKey varsa _lastPdfKey'e set et — fotoğraf yüklemesi için
+    if (d._pdfKey) {
+      try { localStorage.setItem('_lastPdfKey', d._pdfKey); } catch(e) {}
+    }
     // classMeta'dan classes'a dönüştür (her zaman)
     if (d.classMeta) {
       d.classes = {};
@@ -1881,7 +1894,24 @@ Object.keys(ST.classes).forEach(k => loadPhotos(k, ST.classes[k].students));
       if (btnAdmin) btnAdmin.style.display = t.isAdmin ? '' : 'none';
       if (sbName)   sbName.textContent   = t.name || '';
       if (sbBranch) sbBranch.textContent = (t.branch || '') + (t.schoolName ? ' · ' + t.schoolName : '');
-      loadTeacherData();
+      // ST.classes zaten loadST() ile yüklendi — sadece fotoğrafları ekle
+      if (Object.keys(ST.classes).length > 0) {
+        // Fotoğrafları yükle
+        var pKey = t._pdfKey || localStorage.getItem('_lastPdfKey');
+        if (pKey) {
+          try {
+            var photos = JSON.parse(localStorage.getItem(pKey + '_photos') || '{}');
+            Object.keys(ST.classes).forEach(function(ck) {
+              ST.classes[ck].students.forEach(function(s, si) {
+                if (!s.photoData) s.photoData = photos[ck+'_'+si] || null;
+              });
+            });
+          } catch(e) {}
+        }
+      } else {
+        // Sınıf yoksa PDF'den yükle
+        loadTeacherData();
+      }
       // Ekranı teacher'a al
       document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
       document.getElementById('teacher').classList.add('active');
