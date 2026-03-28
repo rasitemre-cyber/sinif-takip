@@ -1676,8 +1676,53 @@ function saveTeacherPdf() {
     });
   });
   try { localStorage.setItem(getPhotoKey(), JSON.stringify(photoObj)); } catch(e) {}
-  // Ana veriyi kaydet (classMeta ile birlikte)
+  // Ana veriyi kaydet
   saveST();
+  // Supabase'e de kaydet — tüm cihazlardan erişim için
+  syncClassesToCloud();
+}
+
+function syncClassesToCloud() {
+  if (!currentTeacher || !currentTeacher.id) return;
+  try {
+    var classData = {};
+    Object.keys(ST.classes).forEach(function(k) {
+      var cls = ST.classes[k];
+      classData[k] = {
+        name: cls.name, school: cls.school,
+        students: cls.students.map(function(s) { return { name: s.name, number: s.number }; })
+      };
+    });
+    var payload = JSON.stringify({ classes: classData, schoolName: ST.schoolName, savedAt: new Date().toISOString() });
+    sb.from('teachers').update({ class_data: payload }).eq('id', currentTeacher.id)
+      .then(function(r) { if (!r.error) console.log('Cloud sync OK'); })
+      .catch(function() {});
+  } catch(e) {}
+}
+
+async function loadClassesFromCloud() {
+  if (!currentTeacher || !currentTeacher.id) return false;
+  try {
+    var result = await sb.from('teachers').select('class_data').eq('id', currentTeacher.id).single();
+    if (!result.data || !result.data.class_data) return false;
+    var data = JSON.parse(result.data.class_data);
+    if (!data.classes || Object.keys(data.classes).length === 0) return false;
+    // Sınıfları yükle
+    Object.keys(data.classes).forEach(function(k) {
+      if (!ST.classes[k]) {
+        var cls = data.classes[k];
+        ST.classes[k] = {
+          name: cls.name, school: cls.school,
+          students: (cls.students || []).map(function(s) {
+            return { name: s.name, number: s.number, photoData: null };
+          })
+        };
+      }
+    });
+    if (data.schoolName) ST.schoolName = data.schoolName;
+    saveST();
+    return true;
+  } catch(e) { return false; }
 }
 
 function loadTeacherData() {
@@ -2012,13 +2057,23 @@ async function handlePDF(file) {
     saveTeacherPdf(); // Save per-teacher PDF data
     hideLoading();
 
-    // Sinif secimini kullaniciya birak
-    const keys = Object.keys(ST.classes);
     ST.activeClass = null;
+    // Yeni yüklenen sınıfları teacherClasses'a ekle (henüz seçim yapılmamışsa)
+    if (currentTeacher) {
+      if (!ST.teacherClasses) ST.teacherClasses = {};
+      var existingSel = ST.teacherClasses[currentTeacher.id];
+      if (!existingSel) existingSel = [];
+      var allKeys = Object.keys(ST.classes);
+      allKeys.forEach(function(k) { if (!existingSel.includes(k)) existingSel.push(k); });
+      ST.teacherClasses[currentTeacher.id] = existingSel;
+      saveST();
+    }
     renderTeacher();
 
-    if (newClasses === 0) {
-      alert('PDF\'de yeni sınıf bulunamadı. Lütfen e-Okul formatında bir PDF yükleyin.');
+    if (newClasses === 0 && Object.keys(ST.classes).length === 0) {
+      alert('PDF\'de sınıf bulunamadı. Lütfen e-Okul formatında bir PDF yükleyin.');
+    } else if (newClasses === 0) {
+      showToast('PDF işlendi, sınıf listesi güncellendi.');
     } else {
       // Yeni sınıflar geldi — öğretmen seçimini yenile
       const myKeys = getMyClasses();
