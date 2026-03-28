@@ -1565,50 +1565,29 @@ function getPhotoKey() {
 
 function savePhotos(classKey, students) {
   try {
-    var existing = {};
-    try { existing = JSON.parse(localStorage.getItem(getPhotoKey()) || '{}'); } catch(e) {}
+    var photoObj = {};
     students.forEach(function(s, si) {
-      if (s.photoData) existing[classKey + '_' + si] = s.photoData;
+      if (s.photoData) photoObj[si] = s.photoData;
     });
-    localStorage.setItem(getPhotoKey(), JSON.stringify(existing));
-  } catch(e) {}
+    localStorage.setItem('_ph_' + classKey, JSON.stringify(photoObj));
+  } catch(e) {
+    console.warn('Fotograf kaydedilemedi:', classKey, e.message);
+  }
 }
 
 function loadPhotos(classKey, students) {
   try {
-    var photos = JSON.parse(localStorage.getItem(getPhotoKey()) || '{}');
+    var photos = JSON.parse(localStorage.getItem('_ph_' + classKey) || '{}');
     students.forEach(function(s, si) {
-      if (!s.photoData) s.photoData = photos[classKey + '_' + si] || null;
+      if (!s.photoData && photos[si]) s.photoData = photos[si];
     });
   } catch(e) {}
 }
 
 function attachAllPhotos() {
-  try {
-    var pkey = getPhotoKey();
-    // Eski key formatlarını da dene
-    var photos = {};
-    var keys = [pkey];
-    if (currentTeacher) {
-      keys.push('kurumPdf_' + currentTeacher.kurumKodu + '_photos');
-      var safe = (currentTeacher.name||'').replace(/[^a-zA-Z0-9]/g,'_').toLowerCase();
-      keys.push('teacherPdf_' + currentTeacher.kurumKodu + '_' + safe + '_photos');
-    }
-    var last = localStorage.getItem('_lastPdfKey');
-    if (last) keys.push(last + '_photos');
-    
-    for (var ki = 0; ki < keys.length; ki++) {
-      try {
-        var ph = JSON.parse(localStorage.getItem(keys[ki]) || 'null');
-        if (ph && Object.keys(ph).length > 0) { photos = ph; break; }
-      } catch(e) {}
-    }
-    Object.keys(ST.classes).forEach(function(ck) {
-      ST.classes[ck].students.forEach(function(s, si) {
-        if (!s.photoData) s.photoData = photos[ck+'_'+si] || null;
-      });
-    });
-  } catch(e) {}
+  Object.keys(ST.classes).forEach(function(k) {
+    loadPhotos(k, ST.classes[k].students);
+  });
 }
 
 function saveST() {
@@ -1731,17 +1710,12 @@ function loadST() {
 
 function saveTeacherPdf() {
   if (!currentTeacher || Object.keys(ST.classes).length === 0) return;
-  // Fotoğrafları ayrı kaydet
-  var photoObj = {};
+  // Her sınıf için fotoğrafları ayrı kaydet
   Object.keys(ST.classes).forEach(function(k) {
-    ST.classes[k].students.forEach(function(s, si) {
-      if (s.photoData) photoObj[k + '_' + si] = s.photoData;
-    });
+    savePhotos(k, ST.classes[k].students);
   });
-  try { localStorage.setItem(getPhotoKey(), JSON.stringify(photoObj)); } catch(e) {}
   // Ana veriyi kaydet
   saveST();
-  // Supabase'e de kaydet — tüm cihazlardan erişim için
   syncClassesToCloud();
 }
 
