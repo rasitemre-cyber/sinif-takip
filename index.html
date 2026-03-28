@@ -1644,21 +1644,49 @@ function saveST() {
     teacherClasses: ST.teacherClasses || {},
     classMeta: classMeta
   };
+  var slimStr = JSON.stringify(slim);
+
+  // Önce classMeta'yı ayrı key'e kaydet (en kritik veri)
   try {
-    localStorage.setItem('sinifTakip3', JSON.stringify(slim));
-    // classMeta'yı ayrıca da kaydet — büyük JSON içinde kaybolmasın
     if (classMeta && Object.keys(classMeta).length > 0) {
       localStorage.setItem('_classMeta', JSON.stringify(classMeta));
       localStorage.setItem('_schoolName', ST.schoolName || '');
     }
+    if (ST.savedTeacher) {
+      localStorage.setItem('_savedTeacher', JSON.stringify(ST.savedTeacher));
+    }
+  } catch(e) {}
+
+  // Sonra ana JSON'u kaydet
+  try {
+    localStorage.setItem('sinifTakip3', slimStr);
   } catch(e) {
-    // Ana kayıt başarısız — sadece classMeta'yı kaydet
+    // Quota exceeded — grades'i çıkar, küçük versiyon dene
     try {
-      if (classMeta && Object.keys(classMeta).length > 0) {
-        localStorage.setItem('_classMeta', JSON.stringify(classMeta));
-        localStorage.setItem('_schoolName', ST.schoolName || '');
-      }
-    } catch(e2) {}
+      var mini = {
+        requests: ST.requests,
+        loggedIn: ST.loggedIn,
+        studentSession: ST.studentSession || null,
+        schoolName: ST.schoolName,
+        activeClass: ST.activeClass,
+        savedTeacher: ST.savedTeacher || null,
+        homeworks: ST.homeworks || {},
+        teacherClasses: ST.teacherClasses || {},
+        classMeta: classMeta
+      };
+      localStorage.setItem('sinifTakip3', JSON.stringify(mini));
+    } catch(e2) {
+      // Hâlâ sığmıyor — sadece kritik verileri kaydet
+      try {
+        var tiny = {
+          savedTeacher: ST.savedTeacher || null,
+          loggedIn: ST.loggedIn,
+          studentSession: ST.studentSession || null,
+          classMeta: classMeta
+        };
+        localStorage.setItem('sinifTakip3', JSON.stringify(tiny));
+      } catch(e3) {}
+    }
   }
 }
 
@@ -1819,6 +1847,22 @@ const ST = {
 Object.keys(ST.classes).forEach(function(k) { attachAllPhotos(); });
 
 // ── Sayfa açılışında oturumu otomatik geri yükle ──────────────────────────
+// localStorage erişim testi
+(function checkStorage() {
+  try {
+    localStorage.setItem('_test', '1');
+    localStorage.removeItem('_test');
+  } catch(e) {
+    // localStorage erişilemiyor - kullanıcıya uyar
+    setTimeout(function() {
+      var warn = document.createElement('div');
+      warn.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#ff4757;color:#fff;padding:12px;text-align:center;font-size:13px;z-index:99999';
+      warn.textContent = '⚠️ Tarayıcı veri kaydetmeye izin vermiyor. Gizli mod veya kısıtlı depolama.';
+      document.body && document.body.appendChild(warn);
+    }, 500);
+  }
+})();
+
 (function restoreSession() {
   // ── Öğretmen oturumu ──
   var teacher = ST.savedTeacher;
