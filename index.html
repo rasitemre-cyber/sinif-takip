@@ -577,6 +577,19 @@ input[type=range]::-moz-range-thumb{width:32px;height:32px;background:#fff;borde
 .cls-select-item.selected .cls-select-check{background:var(--acc);border-color:var(--acc);color:#fff}
 .cls-select-name{font-size:14px;font-weight:600;flex:1}
 .cls-select-sub{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* Ödev istatistik kartları */
+.hw-stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:8px}
+.hw-stat-card{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:16px}
+.hw-stat-cls{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:10px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hw-stat-row{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:6px}
+.hw-stat-bar{height:6px;background:var(--surf2);border-radius:100px;overflow:hidden;margin-top:4px}
+.hw-stat-fill{height:100%;border-radius:100px;transition:width .4s}
+.hw-stat-nums{display:flex;gap:12px;margin-top:8px}
+.hw-stat-num{text-align:center;flex:1}
+.hw-stat-val{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;line-height:1}
+.hw-stat-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
 </style>
 
 <!-- PWA Service Worker -->
@@ -832,12 +845,16 @@ if (!_forceLocal) {
 
       <!-- Tab: Homework -->
       <div id="tabHw" style="flex:1;overflow-y:auto;padding:28px;display:none">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+
+        <!-- İstatistik Özeti -->
+        <div id="hwStats" style="margin-bottom:24px"></div>
+
+        <!-- Başlık + Yeni Ödev butonu -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
           <div style="font-family:'Syne',sans-serif;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)">Ödev Yönetimi</div>
-          <button class="hw-add-btn" onclick="toggleHwForm()">➕ Yeni Ödev</button>
+          <button class="grade-btn" onclick="toggleHwForm()" style="font-size:13px;padding:10px 20px">➕ Yeni Ödev</button>
         </div>
-        <!-- Sınıf filtresi -->
-        <div class="hw-class-select" id="hwClassFilter"></div>
+
         <!-- Ödev ekleme formu -->
         <div class="hw-form" id="hwForm">
           <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Yeni Ödev Ekle</div>
@@ -858,6 +875,10 @@ if (!_forceLocal) {
             <button class="modal-btn secondary" onclick="toggleHwForm()" style="margin:0;padding:10px 16px;font-size:13px">İptal</button>
           </div>
         </div>
+
+        <!-- Sınıf filtresi -->
+        <div class="hw-class-select" id="hwClassFilter" style="margin-bottom:14px"></div>
+
         <!-- Ödev listesi -->
         <div id="hwList"></div>
       </div>
@@ -2404,8 +2425,13 @@ function switchTeacherTab(tab) {
   teacherTab = tab;
   document.getElementById('tabList').style.display = tab === 'list' ? 'block' : 'none';
   document.getElementById('tabReq').style.display = tab === 'req' ? 'block' : 'none';
+  var tabHw = document.getElementById('tabHw');
+  if (tabHw) tabHw.style.display = tab === 'hw' ? 'block' : 'none';
   document.getElementById('tabBtnList').classList.toggle('active', tab === 'list');
   document.getElementById('tabBtnReq').classList.toggle('active', tab === 'req');
+  var tabBtnHw = document.getElementById('tabBtnHw');
+  if (tabBtnHw) tabBtnHw.classList.toggle('active', tab === 'hw');
+  if (tab === 'hw') renderHwStats();
 }
 
 function renderRequests() {
@@ -3427,6 +3453,112 @@ function checkAndShowClassSelect() {
     // İlk giriş — sınıf seçim ekranını göster
     setTimeout(() => openClassSelectModal(), 400);
   }
+}
+
+
+// ── Ödev İstatistikleri ──────────────────────────────────────
+function renderHwStats() {
+  var el = document.getElementById('hwStats');
+  if (!el) return;
+
+  var tId = currentTeacher ? currentTeacher.id : '';
+  var hws = ST.homeworks || {};
+  var myClasses = getMyClasses();
+  var classKeys = (myClasses && myClasses.length > 0) ? myClasses : Object.keys(ST.classes);
+
+  if (classKeys.length === 0) {
+    el.innerHTML = '';
+    return;
+  }
+
+  // Genel özet
+  var totalHw = 0, totalDone = 0, totalStudents = 0;
+  var classStats = [];
+
+  classKeys.forEach(function(ck) {
+    var cls = ST.classes[ck];
+    if (!cls) return;
+    var hwKey = ck + ':' + tId;
+    var clsHws = (hws[hwKey] || []);
+    var stuCount = cls.students.length;
+
+    var hwCount = clsHws.length;
+    var doneCount = 0;
+    clsHws.forEach(function(hw) {
+      var checks = hw.checks || {};
+      cls.students.forEach(function(s, si) {
+        if (checks[si]) doneCount++;
+      });
+    });
+    var maxPossible = hwCount * stuCount;
+
+    totalHw += hwCount;
+    totalDone += doneCount;
+    totalStudents += stuCount;
+
+    if (hwCount > 0) {
+      classStats.push({
+        name: cls.name,
+        hwCount: hwCount,
+        doneCount: doneCount,
+        maxPossible: maxPossible,
+        pct: maxPossible > 0 ? Math.round(doneCount / maxPossible * 100) : 0
+      });
+    }
+  });
+
+  // Genel özet kartı
+  var totalPct = (totalHw * totalStudents) > 0
+    ? Math.round(totalDone / (totalHw * totalStudents) * 100) : 0;
+  var barColor = totalPct >= 80 ? '#2ed573' : totalPct >= 50 ? '#ffd700' : '#ff6584';
+
+  var html = '';
+
+  if (classStats.length > 0) {
+    // Genel özet
+    html += '<div style="background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px">' +
+      '<div style="font-family:Syne,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:12px">📊 Genel Özet</div>' +
+      '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px">' +
+        '<div style="text-align:center;flex:1;min-width:60px">' +
+          '<div style="font-family:Syne,sans-serif;font-size:28px;font-weight:800;color:var(--acc)">' + totalHw + '</div>' +
+          '<div style="font-size:10px;color:var(--muted);text-transform:uppercase">Toplam Ödev</div>' +
+        '</div>' +
+        '<div style="text-align:center;flex:1;min-width:60px">' +
+          '<div style="font-family:Syne,sans-serif;font-size:28px;font-weight:800;color:#2ed573">' + totalDone + '</div>' +
+          '<div style="font-size:10px;color:var(--muted);text-transform:uppercase">Yapılan</div>' +
+        '</div>' +
+        '<div style="text-align:center;flex:1;min-width:60px">' +
+          '<div style="font-family:Syne,sans-serif;font-size:28px;font-weight:800;color:' + barColor + '">%' + totalPct + '</div>' +
+          '<div style="font-size:10px;color:var(--muted);text-transform:uppercase">Tamamlama</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="height:8px;background:var(--surf2);border-radius:100px;overflow:hidden">' +
+        '<div style="height:100%;width:' + totalPct + '%;background:' + barColor + ';border-radius:100px;transition:width .5s"></div>' +
+      '</div>' +
+    '</div>';
+
+    // Sınıf bazlı kartlar
+    html += '<div style="font-family:Syne,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px">Sınıf Bazlı</div>';
+    html += '<div class="hw-stat-grid">';
+    classStats.forEach(function(cs) {
+      var c = cs.pct >= 80 ? '#2ed573' : cs.pct >= 50 ? '#ffd700' : '#ff6584';
+      html += '<div class="hw-stat-card">' +
+        '<div class="hw-stat-cls">' + cs.name + '</div>' +
+        '<div class="hw-stat-nums">' +
+          '<div class="hw-stat-num"><div class="hw-stat-val" style="color:var(--acc)">' + cs.hwCount + '</div><div class="hw-stat-lbl">Ödev</div></div>' +
+          '<div class="hw-stat-num"><div class="hw-stat-val" style="color:#2ed573">' + cs.doneCount + '</div><div class="hw-stat-lbl">Yapılan</div></div>' +
+          '<div class="hw-stat-num"><div class="hw-stat-val" style="color:' + c + '">%' + cs.pct + '</div><div class="hw-stat-lbl">Oran</div></div>' +
+        '</div>' +
+        '<div class="hw-stat-bar" style="margin-top:10px"><div class="hw-stat-fill" style="width:' + cs.pct + '%;background:' + c + '"></div></div>' +
+        '<div style="font-size:10px;color:var(--muted);margin-top:4px">' + cs.doneCount + ' / ' + cs.maxPossible + ' ödev-öğrenci yapıldı</div>' +
+      '</div>';
+    });
+    html += '</div>';
+  } else {
+    html = '<div class="no-data"><div class="no-data-icon">📚</div><p>Henüz ödev eklenmedi.</p></div>';
+  }
+
+  el.innerHTML = html;
 }
 
 function studentLogout() {
