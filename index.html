@@ -808,15 +808,7 @@ if (!_forceLocal) {
     <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
       <!-- Tab: Class list -->
       <div id="tabList" style="flex:1;overflow-y:auto;padding:28px;display:block">
-        <div id="emptyState" class="no-data">
-          <div class="no-data-icon">📋</div>
-          <p>Sınıf listesi henüz yüklenmedi.</p>
-          <div style="margin-top:20px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-            <button class="grade-btn" onclick="document.getElementById('pdfInput').click()" style="font-size:13px;padding:10px 22px">
-              📄 PDF Yükle
-            </button>
-          </div>
-        </div>
+        <div id="emptyState" class="no-data" style="display:none"></div>
         <div id="classView" style="display:none">
           <div class="cls-header">
             <div>
@@ -2320,12 +2312,19 @@ function renderTeacher() {
     }
   }
 
-  // Sınıf seçilmemişse classView gizle
-  if (!ST.activeClass) {
-    document.getElementById('classView').style.display = 'none';
-    const es = document.getElementById('emptyState');
+  // emptyState ve classView yönetimi
+  const es = document.getElementById('emptyState');
+  const cv = document.getElementById('classView');
+
+  if (ST.activeClass && ST.classes[ST.activeClass]) {
+    // Sınıf seçili — classView göster
+    es.style.display = 'none';
+    cv.style.display = 'block';
+  } else {
+    // Sınıf seçili değil
+    cv.style.display = 'none';
     if (allKeys.length === 0) {
-      // Hiç sınıf yok — PDF yükle mesajı
+      // Hiç sınıf yok — PDF yükle
       es.style.display = 'flex';
       es.innerHTML = '<div class="no-data-icon">📄</div><p>PDF yükleyerek sınıfları ekleyin.</p>' +
         '<div style="margin-top:20px">' +
@@ -2333,12 +2332,15 @@ function renderTeacher() {
         '</div>';
       var esPdfBtn = document.getElementById('esPdfBtn');
       if (esPdfBtn) esPdfBtn.onclick = function(){ document.getElementById('pdfInput').click(); };
-    } else {
-      // Sınıflar var — sadece "seçin" mesajı, PDF butonu yok
+    } else if (keys.length === 0) {
+      // Sınıflar var ama seçilmemiş
       es.style.display = 'flex';
-      es.innerHTML = keys.length === 0
-        ? '<div class="no-data-icon">📋</div><p>Sınıf seçmediniz.</p><button class="grade-btn" onclick="openClassSelectModal()" style="margin-top:12px;font-size:13px;padding:10px 22px">+ Sınıf Seç</button>'
-        : '<div class="no-data-icon">📋</div><p>Soldaki listeden bir sınıf seçin.</p>';
+      es.innerHTML = '<div class="no-data-icon">📋</div><p>Sınıf seçmediniz.</p>' +
+        '<button class="grade-btn" onclick="openClassSelectModal()" style="margin-top:12px;font-size:13px;padding:10px 22px">+ Sınıf Seç</button>';
+    } else {
+      // Sınıflar var, seçim yapıldı — sadece tıklama bekle
+      es.style.display = 'flex';
+      es.innerHTML = '<div class="no-data-icon">📋</div><p>Soldaki listeden bir sınıf seçin.</p>';
     }
   }
 
