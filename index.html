@@ -1644,12 +1644,47 @@ function saveST() {
     teacherClasses: ST.teacherClasses || {},
     classMeta: classMeta
   };
-  try { localStorage.setItem('sinifTakip3', JSON.stringify(slim)); } catch(e) {}
+  try {
+    localStorage.setItem('sinifTakip3', JSON.stringify(slim));
+    // classMeta'yı ayrıca da kaydet — büyük JSON içinde kaybolmasın
+    if (classMeta && Object.keys(classMeta).length > 0) {
+      localStorage.setItem('_classMeta', JSON.stringify(classMeta));
+      localStorage.setItem('_schoolName', ST.schoolName || '');
+    }
+  } catch(e) {
+    // Ana kayıt başarısız — sadece classMeta'yı kaydet
+    try {
+      if (classMeta && Object.keys(classMeta).length > 0) {
+        localStorage.setItem('_classMeta', JSON.stringify(classMeta));
+        localStorage.setItem('_schoolName', ST.schoolName || '');
+      }
+    } catch(e2) {}
+  }
 }
 
 function loadST() {
   try {
     var d = JSON.parse(localStorage.getItem('sinifTakip3') || '{}');
+
+    // Backup'tan yükle - ana JSON'da classMeta yoksa veya boşsa
+    if (!d.classMeta || Object.keys(d.classMeta).length === 0) {
+      try {
+        var backupMeta = JSON.parse(localStorage.getItem('_classMeta') || 'null');
+        if (backupMeta && Object.keys(backupMeta).length > 0) {
+          d.classMeta = backupMeta;
+          if (!d.schoolName) d.schoolName = localStorage.getItem('_schoolName') || '';
+        }
+      } catch(e2) {}
+    }
+
+    // savedTeacher backup
+    if (!d.savedTeacher) {
+      try {
+        var tBak = JSON.parse(localStorage.getItem('_savedTeacher') || 'null');
+        if (tBak) d.savedTeacher = tBak;
+      } catch(e2) {}
+    }
+
     if (d.classMeta && Object.keys(d.classMeta).length > 0) {
       d.classes = {};
       Object.keys(d.classMeta).forEach(function(k) {
@@ -1780,23 +1815,8 @@ const ST = {
   ...loadST()
 };
 
-// Restore photos from session (they survive page-within-session but not reload)
-// Photos stored in sessionStorage as they're too big for localStorage
-function savePhotos(classKey, students) {
-  try {
-    const photos = students.map(s => s.photoData || null);
-    sessionStorage.setItem('photos_' + classKey, JSON.stringify(photos));
-  } catch(e) {}
-}
-function loadPhotos(classKey, students) {
-  try {
-    const photos = JSON.parse(sessionStorage.getItem('photos_' + classKey) || '[]');
-    photos.forEach((p, i) => { if (students[i]) students[i].photoData = p; });
-  } catch(e) {}
-}
-
-// Re-attach photos to classes on init
-Object.keys(ST.classes).forEach(k => loadPhotos(k, ST.classes[k].students));
+// Fotoğrafları başlangıçta ekle
+Object.keys(ST.classes).forEach(function(k) { attachAllPhotos(); });
 
 // ── Sayfa açılışında oturumu otomatik geri yükle ──────────────────────────
 (function restoreSession() {
@@ -1822,7 +1842,6 @@ Object.keys(ST.classes).forEach(k => loadPhotos(k, ST.classes[k].students));
       // Ekrana geç
       document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
       document.getElementById('teacher').classList.add('active');
-      autoLoadPreloaded();
       updateLastPdfBtn();
       renderTeacher();
       return;
@@ -1856,27 +1875,8 @@ Object.keys(ST.classes).forEach(k => loadPhotos(k, ST.classes[k].students));
 })();
 
 
-// ═══════════════════════════════════════════════════════════════
-// PRE-PARSED CLASS DATA (embedded from PDF at build time)
-// ═══════════════════════════════════════════════════════════════
-const PRELOADED_SCHOOL = "";
-const PRELOADED_CLASSES = [];
-
-// Auto-load pre-parsed data on teacher panel open
 function autoLoadPreloaded() {
-  if (PRELOADED_CLASSES.length === 0) return;
-  if (Object.keys(ST.classes).length > 0) return; // already loaded
-  
-  for (const cls of PRELOADED_CLASSES) {
-    const key = cls.name.replace(/\s+/g, '_');
-    ST.classes[key] = {
-      name: cls.name,
-      school: cls.school,
-      students: cls.students.map(s => ({name: s.name, number: s.number, photoData: s.photo || null}))
-    };
-  }
-  if (!ST.schoolName && PRELOADED_CLASSES.length) ST.schoolName = PRELOADED_CLASSES[0].school;
-  saveST();
+  // PRELOADED_CLASSES her zaman boş — embed edilmiş veri yok
 }
 
 // ═══════════════════════════════════════════════════════════════
