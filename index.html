@@ -1246,6 +1246,14 @@ function adminApproveReq(idx, classKey, studentIdx) {
   ST.requests[idx].classKey = classKey;
   ST.requests[idx].studentIdx = studentIdx;
   saveST();
+  // Supabase'de de güncelle
+  var req = ST.requests[idx];
+  if (req.cloudId) {
+    try {
+      sb.from('student_requests').update({ status: 'approved', class_key: classKey, student_idx: studentIdx })
+        .eq('id', req.cloudId).then(function(){}).catch(function(){});
+    } catch(e) {}
+  }
   renderAdminRequests();
   showToast('Öğrenci eşleştirildi.');
 }
@@ -2434,9 +2442,38 @@ function switchTeacherTab(tab) {
   if (tab === 'hw') renderHwStats();
 }
 
-function renderRequests() {
+async function renderRequests() {
   const el = document.getElementById('reqList');
   const tKurum = currentTeacher?.kurumKodu || '';
+
+  // Supabase'den başvuruları çek ve ST.requests ile birleştir
+  try {
+    const { data: cloudReqs } = await sb.from('student_requests')
+      .select('*').eq('kurum_kodu', tKurum);
+    if (cloudReqs && cloudReqs.length > 0) {
+      cloudReqs.forEach(function(cr) {
+        // Zaten ST.requests'te var mı kontrol et
+        var exists = ST.requests.some(function(r) {
+          return String(r.number) === String(cr.number) && r.kurumKodu === cr.kurum_kodu;
+        });
+        if (!exists) {
+          ST.requests.push({
+            name: cr.name,
+            number: cr.number,
+            kurumKodu: cr.kurum_kodu,
+            schoolName: cr.school_name,
+            passHash: cr.pass_hash,
+            ts: cr.ts || Date.now(),
+            classKey: null,
+            studentIdx: null,
+            cloudId: cr.id
+          });
+        }
+      });
+      saveST();
+    }
+  } catch(e) {}
+
   const filtered = ST.requests.filter(r => r.kurumKodu === tKurum);
   
   if (filtered.length === 0) {
@@ -2818,14 +2855,35 @@ function studentLogin() {
       showSubjectSelect(existingIdx, school || req.schoolName || '');
       return;
     }
-    return showMsg('İsteğiniz öğretmen onayı bekliyor.', 'warn');
+    // Supabase'de onaylanmış mı kontrol et
+    try {
+      sb.from('student_requests').select('*')
+        .eq('kurum_kodu', kurum).eq('number', num).single()
+        .then(function(res) {
+          if (res.data && res.data.status === 'approved' && res.data.class_key) {
+            req.classKey = res.data.class_key;
+            req.studentIdx = res.data.student_idx;
+            req.cloudId = res.data.id;
+            ST.loggedIn = existingIdx;
+            saveST();
+            showSubjectSelect(existingIdx, school || req.schoolName || '');
+          } else {
+            showMsg('İsteğiniz öğretmen onayı bekliyor.', 'warn');
+          }
+        }).catch(function() {
+          showMsg('İsteğiniz öğretmen onayı bekliyor.', 'warn');
+        });
+    } catch(e) {
+      showMsg('İsteğiniz öğretmen onayı bekliyor.', 'warn');
+    }
+    return;
   }
 
   // Yeni kayıt — isim zorunlu (ilk kayıtta)
   if (!name) return showMsg('İlk kayıt için lütfen adınızı ve soyadınızı girin.', 'err');
 
-  ST.requests.push({
-    name,
+  var newReq = {
+    name: name,
     number: num,
     kurumKodu: kurum,
     schoolName: school,
@@ -2833,8 +2891,23 @@ function studentLogin() {
     ts: Date.now(),
     classKey: null,
     studentIdx: null
-  });
+  };
+  ST.requests.push(newReq);
   saveST();
+
+  // Supabase'e de kaydet — öğretmen farklı cihazdan görebilsin
+  try {
+    sb.from('student_requests').insert({
+      name: name,
+      number: num,
+      kurum_kodu: kurum,
+      school_name: school,
+      pass_hash: btoa(unescape(encodeURIComponent(pass))),
+      ts: Date.now(),
+      status: 'pending'
+    }).then(function(){}).catch(function(){});
+  } catch(e) {}
+
   showMsg('Kayıt başarılı! Öğretmen eşleştirmesinden sonra tekrar giriş yapın.', 'warn');
 }
 
